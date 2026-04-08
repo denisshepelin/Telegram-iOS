@@ -1971,7 +1971,7 @@ xcodeproj(
     project_name = "Telegram",
     tags = ["manual"],
     top_level_targets = [
-        top_level_target(":Telegram", target_environments = ["device", "simulator"]),
+        top_level_target(":Telegram", target_environments = ["simulator"]),
         ":iOSAppUITestSuite",
     ],
     xcode_configurations = {

@@ -23,6 +23,10 @@ import GlassBarButtonComponent
 
 private let settingsTag = GenericComponentViewTag()
 
+private func systemDefaultBrowserTitle(strings: PresentationStrings) -> String {
+    return strings.primaryComponent.dict["WebBrowser.DefaultBrowserOption"] ?? "Default Browser"
+}
+
 private final class BrowserScreenComponent: CombinedComponent {
     typealias EnvironmentType = ViewControllerComponentContainer.Environment
     
@@ -1266,8 +1270,9 @@ public class BrowserScreen: ViewController, MinimizableController {
                     }
                 )
                 
+                let usesSystemDefaultBrowser = settings.defaultWebBrowser == webBrowserSettingsSystemDefaultBrowserIdentifier
                 var defaultWebBrowser: String? = settings.defaultWebBrowser
-                if defaultWebBrowser == nil || defaultWebBrowser == "inApp" || defaultWebBrowser == "inAppSafari" {
+                if defaultWebBrowser == nil || defaultWebBrowser == webBrowserSettingsInAppBrowserIdentifier || defaultWebBrowser == "inAppSafari" {
                     defaultWebBrowser = "safari"
                 }
                 
@@ -1275,7 +1280,10 @@ public class BrowserScreen: ViewController, MinimizableController {
                 let openInOptions = availableOpenInOptions(context: self.context, item: .url(url: url))
                 let openInTitle: String
                 let openInUrl: String
-                if let option = openInOptions.first(where: { $0.identifier == defaultWebBrowser }) {
+                if usesSystemDefaultBrowser {
+                    openInTitle = systemDefaultBrowserTitle(strings: self.presentationData.strings)
+                    openInUrl = url
+                } else if let option = openInOptions.first(where: { $0.identifier == defaultWebBrowser }) {
                     openInTitle = option.title
                     if case let .openUrl(url) = option.action() {
                         openInUrl = url

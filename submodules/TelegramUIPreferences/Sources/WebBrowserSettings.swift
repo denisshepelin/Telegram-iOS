@@ -2,6 +2,9 @@ import Foundation
 import TelegramCore
 import SwiftSignalKit
 
+public let webBrowserSettingsInAppBrowserIdentifier = "inApp"
+public let webBrowserSettingsSystemDefaultBrowserIdentifier = "systemDefault"
+
 public struct WebBrowserException: Codable, Equatable {
     public let domain: String
     public let title: String

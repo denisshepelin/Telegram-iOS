@@ -296,10 +296,12 @@ private func handleInternetUrl(
                 } else {
                     let openInOptions = availableOpenInOptions(context: context, item: .url(url: originalUrl))
                     var defaultWebBrowser = localSettings.defaultWebBrowser
-                    if defaultWebBrowser == nil || defaultWebBrowser == "inApp" || defaultWebBrowser == "inAppSafari" {
+                    if defaultWebBrowser == nil || defaultWebBrowser == webBrowserSettingsInAppBrowserIdentifier || defaultWebBrowser == "inAppSafari" {
                         defaultWebBrowser = "safari"
                     }
-                    if let option = openInOptions.first(where: { $0.identifier == defaultWebBrowser }) {
+                    if defaultWebBrowser == webBrowserSettingsSystemDefaultBrowserIdentifier {
+                        context.sharedContext.applicationBindings.openUrl(originalUrl)
+                    } else if let option = openInOptions.first(where: { $0.identifier == defaultWebBrowser }) {
                         if case let .openUrl(openInUrl) = option.action() {
                             context.sharedContext.applicationBindings.openUrl(openInUrl)
                         } else {

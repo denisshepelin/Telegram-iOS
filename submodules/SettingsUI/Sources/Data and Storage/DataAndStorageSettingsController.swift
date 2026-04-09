@@ -20,6 +20,10 @@ public enum AutomaticSaveIncomingPeerType {
     case channels
 }
 
+private func systemDefaultBrowserTitle(strings: PresentationStrings) -> String {
+    return strings.primaryComponent.dict["WebBrowser.DefaultBrowserOption"] ?? "Default Browser"
+}
+
 private final class DataAndStorageControllerArguments {
     let openStorageUsage: () -> Void
     let openNetworkUsage: () -> Void

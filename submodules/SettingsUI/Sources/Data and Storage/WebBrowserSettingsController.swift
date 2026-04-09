@@ -14,6 +14,10 @@ import UndoUI
 import WebKit
 import PersistentStringHash
 
+private func systemDefaultBrowserTitle(strings: PresentationStrings) -> String {
+    return strings.primaryComponent.dict["WebBrowser.DefaultBrowserOption"] ?? "Default Browser"
+}
+
 private final class WebBrowserSettingsControllerArguments {
     let context: AccountContext
     let updateDefaultBrowser: (String?) -> Void
@@ -22,7 +26,7 @@ private final class WebBrowserSettingsControllerArguments {
     let addException: (Bool) -> Void
     let removeException: (AccountWebBrowserException) -> Void
     let clearExceptions: () -> Void
-    
+
     init(
         context: AccountContext,
         updateDefaultBrowser: @escaping (String?) -> Void,
@@ -54,23 +58,23 @@ private enum WebBrowserSettingsControllerEntry: ItemListNodeEntry {
     case browserHeader(PresentationTheme, String)
     case browser(PresentationTheme, String, OpenInApplication?, String?, Bool, Int32)
     case browserInfo(PresentationTheme, String)
-    
+
     case clearCookies(PresentationTheme, String)
     case clearCache(PresentationTheme, String)
     case clearCookiesInfo(PresentationTheme, String)
-    
+
     case neverHeader(PresentationTheme, String)
     case neverAdd(PresentationTheme, String)
     case neverException(Int32, PresentationTheme, AccountWebBrowserException)
     case neverExceptionsInfo(PresentationTheme, String)
     case neverExceptionsClear(PresentationTheme, String)
-    
+
     case alwaysHeader(PresentationTheme, String)
     case alwaysAdd(PresentationTheme, String)
     case alwaysException(Int32, PresentationTheme, AccountWebBrowserException)
     case alwaysExceptionsInfo(PresentationTheme, String)
     case alwaysExceptionsClear(PresentationTheme, String)
-    
+
     var section: ItemListSectionId {
         switch self {
             case .browserHeader, .browser, .browserInfo:
@@ -85,7 +89,7 @@ private enum WebBrowserSettingsControllerEntry: ItemListNodeEntry {
                 return WebBrowserSettingsSection.clear.rawValue
         }
     }
-    
+
     var stableId: UInt64 {
         switch self {
             case .browserHeader:
@@ -122,7 +126,7 @@ private enum WebBrowserSettingsControllerEntry: ItemListNodeEntry {
                 return 3000
         }
     }
-    
+
     var sortId: Int32 {
         switch self {
             case .browserHeader:
@@ -159,7 +163,7 @@ private enum WebBrowserSettingsControllerEntry: ItemListNodeEntry {
                 return 3000
         }
     }
-    
+
     static func ==(lhs: WebBrowserSettingsControllerEntry, rhs: WebBrowserSettingsControllerEntry) -> Bool {
         switch lhs {
             case let .browserHeader(lhsTheme, lhsText):
@@ -260,18 +264,24 @@ private enum WebBrowserSettingsControllerEntry: ItemListNodeEntry {
                 }
         }
     }
-        
+
     static func <(lhs: WebBrowserSettingsControllerEntry, rhs: WebBrowserSettingsControllerEntry) -> Bool {
         return lhs.sortId < rhs.sortId
     }
-    
+
     func item(presentationData: ItemListPresentationData, arguments: Any) -> ListViewItem {
         let arguments = arguments as! WebBrowserSettingsControllerArguments
         switch self {
             case let .browserHeader(_, text):
                 return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: self.section)
             case let .browser(_, title, application, identifier, selected, _):
-                return WebBrowserItem(context: arguments.context, presentationData: presentationData, systemStyle: .glass, title: title, application: application, identifier: identifier, checked: selected, sectionId: self.section) {
+                let iconImage: UIImage?
+                if identifier == webBrowserSettingsSystemDefaultBrowserIdentifier {
+                    iconImage = UIImage(bundleImageName: "Chat/Context Menu/Browser")
+                } else {
+                    iconImage = nil
+                }
+                return WebBrowserItem(context: arguments.context, presentationData: presentationData, systemStyle: .glass, title: title, application: application, identifier: identifier, iconImage: iconImage, checked: selected, sectionId: self.section) {
                     arguments.updateDefaultBrowser(identifier)
                 }
             case let .browserInfo(_, text):
@@ -324,54 +334,55 @@ private enum WebBrowserSettingsControllerEntry: ItemListNodeEntry {
 
 private func webBrowserSettingsControllerEntries(context: AccountContext, presentationData: PresentationData, localSettings: WebBrowserSettings, accountSettings: AccountWebBrowserSettings) -> [WebBrowserSettingsControllerEntry] {
     var entries: [WebBrowserSettingsControllerEntry] = []
-    
+
     let options = availableOpenInOptions(context: context, item: .url(url: "https://telegram.org"))
     let defaultExternalBrowser = localSettings.defaultWebBrowser ?? "default"
-    
+
     entries.append(.browserHeader(presentationData.theme, presentationData.strings.WebBrowser_OpenLinksIn_Title))
     entries.append(.browser(presentationData.theme, presentationData.strings.WebBrowser_Telegram, nil, nil, !accountSettings.openExternalBrowser, 0))
-        
-    var index: Int32 = 1
+    entries.append(.browser(presentationData.theme, systemDefaultBrowserTitle(strings: presentationData.strings), nil, webBrowserSettingsSystemDefaultBrowserIdentifier, accountSettings.openExternalBrowser && defaultExternalBrowser == webBrowserSettingsSystemDefaultBrowserIdentifier, 1))
+
+    var index: Int32 = 2
     for option in options {
         entries.append(.browser(presentationData.theme, option.title, option.application, option.identifier, accountSettings.openExternalBrowser && option.identifier == defaultExternalBrowser, index))
         index += 1
     }
-    
+
     entries.append(.browserInfo(presentationData.theme, presentationData.strings.WebBrowser_OpenLinksInfo))
-    
+
     entries.append(.clearCookies(presentationData.theme, presentationData.strings.WebBrowser_ClearCookies))
     entries.append(.clearCookiesInfo(presentationData.theme, presentationData.strings.WebBrowser_ClearCookies_Info))
-    
+
     if accountSettings.openExternalBrowser {
         entries.append(.neverHeader(presentationData.theme, presentationData.strings.WebBrowser_Exceptions_OpenInApp))
         entries.append(.neverAdd(presentationData.theme, presentationData.strings.WebBrowser_Exceptions_AddException))
-        
+
         var exceptionIndex: Int32 = 0
         for exception in accountSettings.inAppExceptions.reversed() {
             entries.append(.neverException(exceptionIndex, presentationData.theme, exception))
             exceptionIndex += 1
         }
         entries.append(.neverExceptionsInfo(presentationData.theme, presentationData.strings.WebBrowser_Exceptions_InAppInfo))
-        
+
         if !accountSettings.inAppExceptions.isEmpty {
             entries.append(.neverExceptionsClear(presentationData.theme, presentationData.strings.WebBrowser_Exceptions_DeleteAll))
         }
     } else {
         entries.append(.alwaysHeader(presentationData.theme, presentationData.strings.WebBrowser_Exceptions_DontOpenInApp))
         entries.append(.alwaysAdd(presentationData.theme, presentationData.strings.WebBrowser_Exceptions_AddException))
-        
+
         var exceptionIndex: Int32 = 0
         for exception in accountSettings.externalExceptions.reversed() {
             entries.append(.alwaysException(exceptionIndex, presentationData.theme, exception))
             exceptionIndex += 1
         }
         entries.append(.alwaysExceptionsInfo(presentationData.theme, presentationData.strings.WebBrowser_Exceptions_Info))
-        
+
         if !accountSettings.externalExceptions.isEmpty {
             entries.append(.alwaysExceptionsClear(presentationData.theme, presentationData.strings.WebBrowser_Exceptions_DeleteAll))
         }
     }
-        
+
     return entries
 }
 
@@ -381,7 +392,7 @@ public func webBrowserSettingsController(context: AccountContext) -> ViewControl
     var addExceptionImpl: ((Bool) -> Void)?
     var removeExceptionImpl: ((AccountWebBrowserException) -> Void)?
     var clearExceptionsImpl: (() -> Void)?
-    
+
     let arguments = WebBrowserSettingsControllerArguments(
         context: context,
         updateDefaultBrowser: { identifier in
@@ -411,9 +422,9 @@ public func webBrowserSettingsController(context: AccountContext) -> ViewControl
             clearExceptionsImpl?()
         }
     )
-    
+
     let previousSettings = Atomic<(WebBrowserSettings, AccountWebBrowserSettings)?>(value: nil)
-    
+
     let signal = combineLatest(
         context.sharedContext.presentationData,
         context.sharedContext.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.webBrowserSettings]),
@@ -424,7 +435,7 @@ public func webBrowserSettingsController(context: AccountContext) -> ViewControl
         let localSettings = sharedData.entries[ApplicationSpecificSharedDataKeys.webBrowserSettings]?.get(WebBrowserSettings.self) ?? WebBrowserSettings.defaultSettings
         let accountSettings = accountSettingsEntry?.get(AccountWebBrowserSettings.self) ?? AccountWebBrowserSettings.defaultSettings
         let previousSettings = previousSettings.swap((localSettings, accountSettings))
-        
+
         var animateChanges = false
         if let previousSettings {
             if previousSettings.0.defaultWebBrowser != localSettings.defaultWebBrowser || previousSettings.1.openExternalBrowser != accountSettings.openExternalBrowser {
@@ -434,18 +445,18 @@ public func webBrowserSettingsController(context: AccountContext) -> ViewControl
                 animateChanges = true
             }
         }
-        
+
         let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(presentationData.strings.WebBrowser_Title), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
         let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: webBrowserSettingsControllerEntries(context: context, presentationData: presentationData, localSettings: localSettings, accountSettings: accountSettings), style: .blocks, animateChanges: animateChanges)
-        
+
         return (controllerState, (listState, arguments))
     }
-    
+
     let controller = ItemListController(context: context, state: signal)
-    
+
     clearCookiesImpl = { [weak controller] in
         let presentationData = context.sharedContext.currentPresentationData.with { $0 }
-        
+
         let alertController = textAlertController(
             context: context,
             updatedPresentationData: nil,
@@ -455,7 +466,7 @@ public func webBrowserSettingsController(context: AccountContext) -> ViewControl
                 TextAlertAction(type: .genericAction, title: presentationData.strings.Common_Cancel, action: {}),
                 TextAlertAction(type: .defaultAction, title: presentationData.strings.WebBrowser_ClearCookies_ClearConfirmation_Clear, action: {
                     WKWebsiteDataStore.default().removeData(ofTypes: [WKWebsiteDataTypeCookies, WKWebsiteDataTypeLocalStorage, WKWebsiteDataTypeSessionStorage], modifiedSince: Date(timeIntervalSince1970: 0), completionHandler:{})
-                            
+
                     let presentationData = context.sharedContext.currentPresentationData.with { $0 }
                     controller?.present(UndoOverlayController(
                         presentationData: presentationData,
@@ -474,10 +485,10 @@ public func webBrowserSettingsController(context: AccountContext) -> ViewControl
         )
         controller?.present(alertController, in: .window(.root))
     }
-    
+
     clearCacheImpl = { [weak controller] in
         let presentationData = context.sharedContext.currentPresentationData.with { $0 }
-        
+
         let alertController = textAlertController(
             context: context,
             updatedPresentationData: nil,
@@ -487,7 +498,7 @@ public func webBrowserSettingsController(context: AccountContext) -> ViewControl
                 TextAlertAction(type: .genericAction, title: presentationData.strings.Common_Cancel, action: {}),
                 TextAlertAction(type: .defaultAction, title: presentationData.strings.WebBrowser_ClearCache_ClearConfirmation_Clear, action: {
                     WKWebsiteDataStore.default().removeData(ofTypes: [WKWebsiteDataTypeDiskCache, WKWebsiteDataTypeMemoryCache], modifiedSince: Date(timeIntervalSince1970: 0), completionHandler:{})
-                            
+
                     let presentationData = context.sharedContext.currentPresentationData.with { $0 }
                     controller?.present(UndoOverlayController(
                         presentationData: presentationData,
@@ -506,7 +517,7 @@ public func webBrowserSettingsController(context: AccountContext) -> ViewControl
         )
         controller?.present(alertController, in: .window(.root))
     }
-    
+
     addExceptionImpl = { [weak controller] external in
         var dismissImpl: (() -> Void)?
         let linkController = webBrowserDomainController(context: context, external: external, apply: { url in
@@ -528,7 +539,7 @@ public func webBrowserSettingsController(context: AccountContext) -> ViewControl
         }
         controller?.present(linkController, in: .window(.root))
     }
-    
+
     removeExceptionImpl = { exception in
         let url = exception.url.isEmpty ? exception.domain : exception.url
         let _ = (context.account.postbox.transaction { transaction -> AccountWebBrowserSettings in
@@ -538,10 +549,10 @@ public func webBrowserSettingsController(context: AccountContext) -> ViewControl
             return toggleWebBrowserSettingsException(postbox: context.account.postbox, network: context.account.network, openExternalBrowser: !settings.openExternalBrowser, delete: true, url: url)
         }).start()
     }
-    
+
     clearExceptionsImpl = { [weak controller] in
         let presentationData = context.sharedContext.currentPresentationData.with { $0 }
-        
+
         let alertController = textAlertController(
             context: context,
             updatedPresentationData: nil,
@@ -556,6 +567,6 @@ public func webBrowserSettingsController(context: AccountContext) -> ViewControl
         )
         controller?.present(alertController, in: .window(.root))
     }
-    
+
     return controller
 }

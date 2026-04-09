@@ -646,7 +646,7 @@ extension ChatControllerImpl {
                                 accessibilityLabel: strings.Conversation_ContextMenuOpenProfile
                             )
                             
-                            strongSelf.state.storyStats = peerView.storyStats
+                            strongSelf.state.storyStats = context.sharedContext.currentChatSettings.with { $0.displayStories } ? peerView.storyStats : nil
                         }
                     }
                     

@@ -2223,7 +2223,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                     self.requestLayout(transition: transition)
                     self.chatListDisplayNode.temporaryContentOffsetChangeTransition = nil
                     
-                    if !shouldDisplayStoriesInChatListHeader(storySubscriptions: rawStorySubscriptions, isHidden: self.location == .chatList(groupId: .archive)) {
+                    if !shouldDisplayStoriesInChatListHeader(storySubscriptions: rawStorySubscriptions, isHidden: self.location == .chatList(groupId: .archive), displayStories: self.context.sharedContext.currentChatSettings.with { $0.displayStories }) {
                         self.chatListDisplayNode.scrollToTopIfStoriesAreExpanded()
                     }
                     

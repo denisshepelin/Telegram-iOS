@@ -3844,6 +3844,7 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
             guard let (items, isSearching, query) = items else {
                 return .single(nil)
             }
+            let displayStories = context.sharedContext.currentChatSettings.with { $0.displayStories }
             var storyStatsIds: [EnginePeer.Id] = []
             var requiresPremiumForMessagingPeerIds: [EnginePeer.Id] = []
             for item in items {
@@ -3874,7 +3875,11 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
                     break
                 }
             }
-            storyStatsIds.removeAll(where: { $0 == context.account.peerId })
+            if displayStories {
+                storyStatsIds.removeAll(where: { $0 == context.account.peerId })
+            } else {
+                storyStatsIds.removeAll()
+            }
 
             return context.engine.data.subscribe(
                 EngineDataMap(
@@ -3896,13 +3901,13 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
                 for i in 0 ..< mappedItems.count {
                     switch mappedItems[i] {
                     case let .recentlySearchedPeer(peer, associatedPeer, unreadBadge, index, theme, strings, sortOrder, displayOrder, _, _):
-                        mappedItems[i] = .recentlySearchedPeer(peer, associatedPeer, unreadBadge, index, theme, strings, sortOrder, displayOrder, stats[peer.id] ?? nil, requiresPremiumForMessaging[peer.id] ?? false)
+                        mappedItems[i] = .recentlySearchedPeer(peer, associatedPeer, unreadBadge, index, theme, strings, sortOrder, displayOrder, displayStories ? (stats[peer.id] ?? nil) : nil, requiresPremiumForMessaging[peer.id] ?? false)
                     case let .localPeer(peer, associatedPeer, unreadBadge, index, theme, strings, sortOrder, displayOrder, expandType, _, _, isSelf):
-                        mappedItems[i] = .localPeer(peer, associatedPeer, unreadBadge, index, theme, strings, sortOrder, displayOrder, expandType, stats[peer.id] ?? nil, requiresPremiumForMessaging[peer.id] ?? false, isSelf)
+                        mappedItems[i] = .localPeer(peer, associatedPeer, unreadBadge, index, theme, strings, sortOrder, displayOrder, expandType, displayStories ? (stats[peer.id] ?? nil) : nil, requiresPremiumForMessaging[peer.id] ?? false, isSelf)
                     case let .globalPeer(peer, unreadBadge, index, theme, strings, sortOrder, displayOrder, expandType, _, _, searchQuery):
-                        mappedItems[i] = .globalPeer(peer, unreadBadge, index, theme, strings, sortOrder, displayOrder, expandType, stats[peer.peer.id] ?? nil, requiresPremiumForMessaging[peer.peer.id] ?? false, searchQuery)
+                        mappedItems[i] = .globalPeer(peer, unreadBadge, index, theme, strings, sortOrder, displayOrder, expandType, displayStories ? (stats[peer.peer.id] ?? nil) : nil, requiresPremiumForMessaging[peer.peer.id] ?? false, searchQuery)
                     case let .message(message, peer, combinedPeerReadState, threadInfo, presentationData, totalCount, selected, displayCustomHeader, key, resourceId, section, allPaused, _, _, searchScope):
-                        mappedItems[i] = .message(message, peer, combinedPeerReadState, threadInfo, presentationData, totalCount, selected, displayCustomHeader, key, resourceId, section, allPaused, stats[peer.peerId] ?? nil, requiresPremiumForMessaging[peer.peerId] ?? false, searchScope)
+                        mappedItems[i] = .message(message, peer, combinedPeerReadState, threadInfo, presentationData, totalCount, selected, displayCustomHeader, key, resourceId, section, allPaused, displayStories ? (stats[peer.peerId] ?? nil) : nil, requiresPremiumForMessaging[peer.peerId] ?? false, searchScope)
                     default:
                         break
                     }
@@ -4273,6 +4278,7 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
                     TelegramEngine.EngineData.Item.NotificationSettings.Global()
                 )
                 |> map { peers, notificationSettings, unreadCounts, storyStats, readCounters, participantCounts, globalNotificationSettings -> RecentItems in
+                    let displayStories = context.sharedContext.currentChatSettings.with { $0.displayStories }
                     /*#if DEBUG
                     var localChannels = localChannels
                     localChannels.peerIds = []
@@ -4300,7 +4306,7 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
                             subpeerSummary = RecentlySearchedPeerSubpeerSummary(count: Int(count))
                         }
                         var peerStoryStats: PeerStoryStats?
-                        if let value = storyStats[peer.id] {
+                        if displayStories, let value = storyStats[peer.id] {
                             peerStoryStats = value
                         }
                         var unreadCount: Int32 = 0
@@ -4344,7 +4350,7 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
                                 subpeerSummary = RecentlySearchedPeerSubpeerSummary(count: Int(count))
                             }
                             var peerStoryStats: PeerStoryStats?
-                            if let value = storyStats[peer.id] {
+                            if displayStories, let value = storyStats[peer.id] {
                                 peerStoryStats = value
                             }
                             result.append(.peer(
@@ -4449,6 +4455,7 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
                     TelegramEngine.EngineData.Item.NotificationSettings.Global()
                 )
                 |> map { peers, notificationSettings, unreadCounts, storyStats, readCounters, globalNotificationSettings -> RecentItems in
+                    let displayStories = context.sharedContext.currentChatSettings.with { $0.displayStories }
                     var result: [ChatListRecentEntry] = []
                     var existingIds = Set<PeerId>()
 
@@ -4463,7 +4470,7 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
                         let peerNotificationSettings = notificationSettings[id]
                         let subpeerSummary: RecentlySearchedPeerSubpeerSummary? = nil
                         var peerStoryStats: PeerStoryStats?
-                        if let value = storyStats[peer.id] {
+                        if displayStories, let value = storyStats[peer.id] {
                             peerStoryStats = value
                         }
                         var unreadCount: Int32 = 0
@@ -4502,7 +4509,7 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
                             let peerNotificationSettings = notificationSettings[appPeerId]
                             let subpeerSummary: RecentlySearchedPeerSubpeerSummary? = nil
                             var peerStoryStats: PeerStoryStats?
-                            if let value = storyStats[peer.id] {
+                            if displayStories, let value = storyStats[peer.id] {
                                 peerStoryStats = value
                             }
                             result.append(.peer(

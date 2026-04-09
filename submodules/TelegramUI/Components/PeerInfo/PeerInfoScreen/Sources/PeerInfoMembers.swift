@@ -166,8 +166,9 @@ private final class PeerInfoMembersContextImpl {
                     guard let strongSelf = self else {
                         return
                     }
+                    let displayStories = strongSelf.context.sharedContext.currentChatSettings.with { $0.displayStories }
                     let unsortedMembers = state.list.map { item -> PeerInfoMember in
-                        return .channelMember(participant: item, storyStats: state.peerStoryStats[item.peer.id])
+                        return .channelMember(participant: item, storyStats: displayStories ? state.peerStoryStats[item.peer.id] : nil)
                     }
                     let members: [PeerInfoMember]
                     if unsortedMembers.count <= 50 {
@@ -232,6 +233,7 @@ private final class PeerInfoMembersContextImpl {
                 if let currentVersion = strongSelf.participantsVersion, currentVersion > participantsData.version {
                     return
                 }
+                let displayStories = strongSelf.context.sharedContext.currentChatSettings.with { $0.displayStories }
                 
                 strongSelf.participantsVersion = participantsData.version
                 
@@ -255,7 +257,7 @@ private final class PeerInfoMembersContextImpl {
                             invitedBy = invitedByValue
                             rank = rankValue
                         }
-                        unsortedMembers.append(.legacyGroupMember(peer: EngineRenderedPeer(peer: EnginePeer(peer)), role: role, invitedBy: invitedBy, presence: view.peerPresences[participant.peerId] as? TelegramUserPresence, storyStats: view.memberStoryStats[participant.peerId], rank: rank))
+                        unsortedMembers.append(.legacyGroupMember(peer: EngineRenderedPeer(peer: EnginePeer(peer)), role: role, invitedBy: invitedBy, presence: view.peerPresences[participant.peerId] as? TelegramUserPresence, storyStats: displayStories ? view.memberStoryStats[participant.peerId] : nil, rank: rank))
                     }
                 }
                 

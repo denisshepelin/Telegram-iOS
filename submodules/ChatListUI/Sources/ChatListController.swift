@@ -2301,6 +2301,14 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     
     private weak var storyTooltip: TooltipScreen?
     fileprivate func maybeDisplayStoryTooltip() {
+        if !self.context.sharedContext.currentChatSettings.with({ $0.displayStories }) {
+            if let storyTooltip = self.storyTooltip {
+                storyTooltip.dismiss()
+                self.storyTooltip = nil
+            }
+            return
+        }
+        
         let content = self.updateHeaderContent()
         if content.secondaryContent != nil {
             return

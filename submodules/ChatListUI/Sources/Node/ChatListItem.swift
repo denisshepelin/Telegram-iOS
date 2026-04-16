@@ -1845,10 +1845,13 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
         self.item = item
         
         var storyState: ChatListItemContent.StoryState?
+        var avatarStoryState: ChatListItemContent.StoryState?
         if case let .peer(peerData) = item.content {
             storyState = peerData.storyState
+            avatarStoryState = storyState
         } else if case let .groupReference(groupReference) = item.content {
             storyState = groupReference.storyState
+            avatarStoryState = groupReference.groupId == .archive ? nil : storyState
         }
         
         var peer: EnginePeer?
@@ -1887,7 +1890,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
             enablePreview = false
         }
         
-        self.avatarNode.setStoryStats(storyStats: storyState.flatMap { storyState in
+        self.avatarNode.setStoryStats(storyStats: avatarStoryState.flatMap { storyState in
             return AvatarNode.StoryStats(
                 totalCount: storyState.stats.totalCount,
                 unseenCount: storyState.stats.unseenCount,
@@ -1899,9 +1902,9 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
             lineWidth: 2.33,
             inactiveLineWidth: 1.33
         ), transition: .immediate)
-        self.avatarNode.isUserInteractionEnabled = !item.useCommunityViewLayout && ((storyState != nil && !peerIsCommunity) || peerLinkedCommunityId != nil)
+        self.avatarNode.isUserInteractionEnabled = !item.useCommunityViewLayout && ((avatarStoryState != nil && !peerIsCommunity) || peerLinkedCommunityId != nil)
         
-        if let stats = storyState?.stats, stats.hasLiveItems {
+        if let stats = avatarStoryState?.stats, stats.hasLiveItems {
             if self.avatarLiveBadge == nil {
                 let avatarLiveBadge: (outline: UIImageView, foreground: UIImageView) = (UIImageView(), UIImageView())
                 self.avatarLiveBadge = avatarLiveBadge

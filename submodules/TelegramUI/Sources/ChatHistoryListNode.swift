@@ -694,6 +694,9 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
         }
     }
     
+    private var locallyRevealedMessageIds: Set<MessageId> = []
+    private let locallyRevealedMessageIdsPromise = ValuePromise<Set<MessageId>>([], ignoreRepeated: true)
+
     private let pendingUnpinnedAllMessagesPromise = ValuePromise<Bool>(false)
     var pendingUnpinnedAllMessages: Bool = false {
         didSet {
@@ -1449,6 +1452,16 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
         }
     }
     
+    func revealLocallyMutedMessages(_ messageIds: [MessageId]) {
+        self.locallyRevealedMessageIds.formUnion(messageIds)
+        self.locallyRevealedMessageIdsPromise.set(self.locallyRevealedMessageIds)
+    }
+
+    func resetLocallyRevealedMessages() {
+        self.locallyRevealedMessageIds.removeAll()
+        self.locallyRevealedMessageIdsPromise.set([])
+    }
+
     public func updateTag(tag: HistoryViewInputTag?) {
         if self.tag == tag {
             return
@@ -1462,6 +1475,7 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
         if self.chatLocation == chatLocation {
             return
         }
+        self.resetLocallyRevealedMessages()
         self.chatLocation = chatLocation
         
         self.interactiveReadActionDisposable?.dispose()
@@ -1972,7 +1986,11 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
             self.allAdMessagesPromise.get()
         )
         
-        let contentSettings = self.context.engine.data.subscribe(TelegramEngine.EngineData.Item.Configuration.ContentSettings())
+        let contentSettings = combineLatest(
+            self.context.engine.data.subscribe(TelegramEngine.EngineData.Item.Configuration.ContentSettings()),
+            localMessageMuteSettings(postbox: self.context.account.postbox),
+            self.locallyRevealedMessageIdsPromise.get()
+        )
         
         let maxReadStoryId: Signal<Int32?, NoError>
         if let peerId = self.chatLocation.peerId, peerId.namespace == Namespaces.Peer.CloudUser {
@@ -2083,6 +2101,7 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
             contentSettings |> debug_measureTimeToFirstEvent(label: "chatHistoryNode_contentSettings")
         ) |> debug_measureTimeToFirstEvent(label: "chatHistoryNode_firstChatHistoryTransition")).startStrict(next: { [weak self] update, chatPresentationData, selectedMessages, updatingMedia, networkType, preferredStoryHighQuality, animatedEmojiAndGiftStickers, additionalAnimatedEmojiStickers, customChannelDiscussionReadState, customThreadOutgoingReadState, availableReactions, availableMessageEffects, savedMessageTags, defaultReaction, accountPeer, accountCountry, suggestAudioTranscription, promises, topicAuthorId, translationState, maxReadStoryId, recommendedChannels, audioTranscriptionTrial, chatThemes, deviceContactsNumbers, contentSettings in
             let (animatedEmojiStickers, premiumGiftStickers, tonGiftStickers) = animatedEmojiAndGiftStickers
+            let (contentSettings, localMessageMutes, locallyRevealedMessageIds) = contentSettings
             let (historyAppearsCleared, pendingUnpinnedAllMessages, pendingRemovedMessages, currentlyPlayingMessageIdAndType, scrollToMessageId, chatHasBots, allAdMessages) = promises
             
             if measure_isFirstTime {
@@ -2369,7 +2388,7 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                 }
                                 
                 let previousChatHistoryEntriesForViewState = chatHistoryEntriesForViewState.with({ $0 })
-                let (filteredEntries, updatedChatHistoryEntriesForViewState) = chatHistoryEntriesForView(
+                let (unmutedEntries, updatedChatHistoryEntriesForViewState) = chatHistoryEntriesForView(
                     currentState: previousChatHistoryEntriesForViewState,
                     context: context,
                     location: chatLocation,
@@ -2398,6 +2417,7 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                     isMusicPlaylist: isMusicPlaylist,
                     pinToTopStableId: pinToTopStableId
                 )
+                let filteredEntries = mode == .bubbles ? chatHistoryEntriesWithLocalMessageMutes(unmutedEntries, settings: localMessageMutes, revealedMessageIds: locallyRevealedMessageIds) : unmutedEntries
                 let lastHeaderId = filteredEntries.last.flatMap { listMessageDateHeaderId(timestamp: $0.index.timestamp) } ?? 0
                 let processedView = ChatHistoryView(originalView: view, filteredEntries: filteredEntries, associatedData: associatedData, lastHeaderId: lastHeaderId, id: id, locationInput: update.2, ignoreMessagesInTimestampRange: update.3, ignoreMessageIds: update.4)
                 let previousValueAndVersion = previousView.swap((processedView, update.1, selectedMessages, allAdMessages.version))

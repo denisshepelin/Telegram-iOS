@@ -17244,3 +17244,8 @@ Error: %8$@";
 "Gift.Delete.Title" = "Delete Gift";
 "Gift.Delete.Text" = "Do you want to delete this gift?\n\nIt will disappear from your profile and can't be restored.";
 "Gift.Delete.Success" = "Gift Deleted";
+
+"PeerInfo.HideMessages" = "Hide messages";
+"PeerInfo.ShowMessages" = "Show messages";
+"Conversation.LocalMutedMessage" = "This message is from a muted account";
+"Conversation.RevealLocalMutedMessage" = "Reveal message";

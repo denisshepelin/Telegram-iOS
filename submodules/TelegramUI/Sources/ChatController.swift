@@ -8317,6 +8317,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
         super.viewWillDisappear(animated)
 
         self.walletTransferAnimationsVisible = false
+        self.chatDisplayNode.historyNode.resetLocallyRevealedMessages()
         
         if #available(iOS 18.0, *) {
         } else {

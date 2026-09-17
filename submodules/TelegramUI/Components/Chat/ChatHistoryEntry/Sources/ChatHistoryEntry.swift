@@ -25,6 +25,8 @@ public struct ChatMessageEntryAttributes: Equatable {
     /// of the album entry it becomes. The entry keeps that identity, so the album replaces it in place
     /// rather than as a new row (a row held where it was scrolled to would otherwise be lost).
     public var groupStableId: Int64?
+    /// Whether this conversation entry renders a local muted-account placeholder.
+    public var isLocallyMuted: Bool = false
     
     public init(rank: CachedChannelAdminRank?, isContact: Bool, contentTypeHint: ChatMessageEntryContentType, updatingMedia: ChatUpdatingMessageMedia?, isPlaying: Bool, isCentered: Bool, authorStoryStats: EnginePeerStoryStats?, displayContinueThreadFooter: Bool, pinToTop: Bool, isGiftMessageComposerPreview: Bool = false) {
         self.rank = rank
@@ -83,7 +85,8 @@ public enum ChatHistoryEntry: Identifiable, Comparable {
             case .animatedEmoji:
                 type = 4
             }
-            return UInt64(message.stableId) | ((type << 40))
+            // A distinct identity replaces sticker and emoji nodes with a text bubble.
+            return UInt64(message.stableId) | ((attributes.isLocallyMuted ? UInt64(8) : type) << 40)
         case let .MessageGroupEntry(groupInfo, _, _):
             return UInt64(bitPattern: groupInfo) | ((UInt64(2) << 40))
         case .UnreadEntry:

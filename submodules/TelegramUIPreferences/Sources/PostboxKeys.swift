@@ -10,11 +10,14 @@ private enum ApplicationSpecificPreferencesKeyValues: Int32 {
     case ageVerificationState = 21
     case textProcessingEditingState = 22
     case walletState = 23
-    case qrStudioLook = 24
-    case qrStudioPeerLook = 25
+    case qrStudioLook = 10024
+    case qrStudioPeerLook = 10025
+    case localMessageMuteSettings = 24
 }
 
 public struct ApplicationSpecificPreferencesKeys {
+    /// Account-local storage key for hidden message senders.
+    public static let localMessageMuteSettings: EngineDataBuffer = applicationSpecificPreferencesKey(ApplicationSpecificPreferencesKeyValues.localMessageMuteSettings.rawValue)
     public static let voipDerivedState: EngineDataBuffer = applicationSpecificPreferencesKey(ApplicationSpecificPreferencesKeyValues.voipDerivedState.rawValue)
     public static let chatArchiveSettings: EngineDataBuffer = applicationSpecificPreferencesKey(ApplicationSpecificPreferencesKeyValues.chatArchiveSettings.rawValue)
     public static let chatListFilterSettings: EngineDataBuffer = applicationSpecificPreferencesKey(ApplicationSpecificPreferencesKeyValues.chatListFilterSettings.rawValue)

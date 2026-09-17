@@ -103,6 +103,7 @@ public final class ChatMessageItemImpl: ChatMessageItem, CustomStringConvertible
     }
     
     public init(presentationData: ChatPresentationData, context: AccountContext, chatLocation: ChatLocation, associatedData: ChatMessageItemAssociatedData, controllerInteraction: ChatControllerInteraction, content: ChatMessageItemContent, disableDate: Bool = false, additionalContent: ChatMessageItemAdditionalContent? = nil) {
+        let content = chatMessageMutedContent(content, placeholder: presentationData.strings.Conversation_LocalMutedMessage)
         self.presentationData = presentationData
         self.context = context
         self.chatLocation = chatLocation

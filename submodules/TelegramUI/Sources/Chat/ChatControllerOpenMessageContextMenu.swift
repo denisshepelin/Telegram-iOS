@@ -63,6 +63,14 @@ extension ChatControllerImpl {
                 var (allowedReactions, _) = allowedReactionsAndStars
                 
                 var actions = actions
+                if let item = (node as? ChatMessageItemView)?.item, item.content.firstMessageAttributes.isLocallyMuted, case let .list(items) = actions.content {
+                    let revealItem = ContextMenuItem.action(ContextMenuActionItem(text: presentationData.strings.Conversation_RevealLocalMutedMessage, icon: { _ in nil }, action: { [weak self] controller, _ in
+                        controller?.dismiss(completion: { [weak self] in
+                            self?.chatDisplayNode.historyNode.revealLocallyMutedMessages(messages.map { $0.id })
+                        })
+                    }))
+                    actions.content = .list([revealItem] + items)
+                }
                 switch actions.content {
                 case let .list(itemList):
                     if itemList.isEmpty {

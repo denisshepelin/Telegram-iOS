@@ -7,6 +7,7 @@ import TelegramCore
 import UndoUI
 import ContextUI
 import TelegramPresentationData
+import TelegramUIPreferences
 import NotificationPeerExceptionController
 import NotificationExceptionsScreen
 import TranslateUI
@@ -1289,6 +1290,22 @@ extension PeerInfoScreenNode {
                     }
                 }
                 
+                if case .user = peer, peer.id != strongSelf.context.account.peerId {
+                    let context = strongSelf.context
+                    return localMessageMuteSettings(postbox: context.account.postbox)
+                    |> take(1)
+                    |> deliverOnMainQueue
+                    |> map { settings in
+                        let isMuted = settings.mutedPeerIds.contains(peer.id)
+                        let muteItem = ContextMenuItem.action(ContextMenuActionItem(text: isMuted ? presentationData.strings.PeerInfo_ShowMessages : presentationData.strings.PeerInfo_HideMessages, icon: { theme in
+                            return generateTintedImage(image: UIImage(bundleImageName: isMuted ? "Peer Info/ShowIcon" : "Peer Info/HideIcon"), color: theme.contextMenu.primaryColor)
+                        }, action: { _, f in
+                            f(.dismissWithoutContent)
+                            let _ = updateLocalMessageMuteSettings(postbox: context.account.postbox, peerId: peer.id, muted: !isMuted).startStandalone()
+                        }))
+                        return [muteItem] + items
+                    }
+                }
                 return .single(items)
             }
             

@@ -30,6 +30,13 @@ import MultilineTextWithEntitiesComponent
 import ShimmerEffect
 import GlassBackgroundComponent
 
+/// Controls unread presentation without changing the underlying Telegram read state.
+public enum ChatListUnreadIndicator: Equatable {
+    case normal
+    case hidden
+    case dot(Bool)
+}
+
 public enum ChatListItemContent {
     public final class ThreadInfo: Equatable {
         public let id: Int64
@@ -152,6 +159,7 @@ public enum ChatListItemContent {
         public var inputActivities: [(EnginePeer, PeerInputActivity)]?
         public var promoInfo: ChatListNodeEntryPromoInfo?
         public var ignoreUnreadBadge: Bool
+        public var unreadIndicator: ChatListUnreadIndicator
         public var displayAsMessage: Bool
         public var hasFailedMessages: Bool
         public var forumTopicData: EngineChatList.ForumTopicData?
@@ -188,7 +196,8 @@ public enum ChatListItemContent {
             requiresPremiumForMessaging: Bool,
             displayAsTopicList: Bool,
             tags: [Tag],
-            customMessageListData: CustomMessageListData? = nil
+            customMessageListData: CustomMessageListData? = nil,
+            unreadIndicator: ChatListUnreadIndicator = .normal
         ) {
             self.messages = messages
             self.peer = peer
@@ -205,6 +214,7 @@ public enum ChatListItemContent {
             self.inputActivities = inputActivities
             self.promoInfo = promoInfo
             self.ignoreUnreadBadge = ignoreUnreadBadge
+            self.unreadIndicator = unreadIndicator
             self.displayAsMessage = displayAsMessage
             self.hasFailedMessages = hasFailedMessages
             self.forumTopicData = forumTopicData
@@ -1526,8 +1536,11 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                     } else {
                         result += chatMainPeer.displayTitle(strings: item.presentationData.strings, displayOrder: item.presentationData.nameDisplayOrder)
                     }
-                    if let combinedReadState = peerData.combinedReadState, combinedReadState.count > 0 {
+                    if peerData.unreadIndicator == .normal, let combinedReadState = peerData.combinedReadState, combinedReadState.count > 0 {
                         result += "\n\(item.presentationData.strings.VoiceOver_Chat_UnreadMessages(combinedReadState.count))"
+                    }
+                    if case .dot(true) = peerData.unreadIndicator {
+                        result += "\n\(item.presentationData.strings.DialogList_Unread)"
                     }
                     return result
             }
@@ -3404,10 +3417,25 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                 }
             }
             
-            if unreadCount.unread {
+            var displayedUnreadCount = unreadCount
+            var displayUnreadActivityBadges = true
+            if case let .peer(peerData) = item.content {
+                switch peerData.unreadIndicator {
+                case .normal:
+                    break
+                case .hidden:
+                    displayedUnreadCount = (0, false, false, nil, false)
+                    displayUnreadActivityBadges = false
+                case let .dot(isUnread):
+                    displayedUnreadCount = (0, isUnread && peerData.promoInfo == nil && !peerData.ignoreUnreadBadge, false, nil, false)
+                    displayUnreadActivityBadges = false
+                }
+            }
+
+            if displayedUnreadCount.unread {
                 let badgeTextColor: UIColor
-                if unreadCount.muted {
-                    if unreadCount.isProvisonal, case .forum = item.chatListLocation {
+                if displayedUnreadCount.muted {
+                    if displayedUnreadCount.isProvisonal, case .forum = item.chatListLocation {
                         badgeTextColor = theme.unreadBadgeInactiveBackgroundColor
                         currentBadgeBackgroundImage = PresentationResourcesChatList.badgeBackgroundInactiveProvisional(item.presentationData.theme, diameter: badgeDiameter)
                         currentAvatarBadgeBackgroundImage = PresentationResourcesChatList.badgeBackgroundInactiveProvisional(item.presentationData.theme, diameter: avatarBadgeDiameter)
@@ -3417,7 +3445,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                         currentAvatarBadgeBackgroundImage = PresentationResourcesChatList.badgeBackgroundInactive(item.presentationData.theme, diameter: avatarBadgeDiameter)
                     }
                 } else {
-                    if unreadCount.isProvisonal, case .forum = item.chatListLocation {
+                    if displayedUnreadCount.isProvisonal, case .forum = item.chatListLocation {
                         badgeTextColor = theme.unreadBadgeActiveBackgroundColor
                         currentBadgeBackgroundImage = PresentationResourcesChatList.badgeBackgroundActiveProvisional(item.presentationData.theme, diameter: badgeDiameter)
                         currentAvatarBadgeBackgroundImage = PresentationResourcesChatList.badgeBackgroundActiveProvisional(item.presentationData.theme, diameter: avatarBadgeDiameter)
@@ -3427,8 +3455,8 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                         currentAvatarBadgeBackgroundImage = PresentationResourcesChatList.badgeBackgroundActive(item.presentationData.theme, diameter: avatarBadgeDiameter)
                     }
                 }
-                let unreadCountText = compactNumericCountString(Int(unreadCount.count), decimalSeparator: item.presentationData.dateTimeFormat.decimalSeparator)
-                if unreadCount.count > 0 {
+                let unreadCountText = compactNumericCountString(Int(displayedUnreadCount.count), decimalSeparator: item.presentationData.dateTimeFormat.decimalSeparator)
+                if displayedUnreadCount.count > 0 {
                     badgeContent = .text(NSAttributedString(string: unreadCountText, font: badgeFont, textColor: badgeTextColor))
                 } else if isPeerGroup {
                     badgeContent = .none
@@ -3436,14 +3464,14 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                     badgeContent = .blank
                 }
                 
-                if let mutedCount = unreadCount.mutedCount, mutedCount > 0 {
+                if let mutedCount = displayedUnreadCount.mutedCount, mutedCount > 0 {
                     let mutedUnreadCountText = compactNumericCountString(Int(mutedCount), decimalSeparator: item.presentationData.dateTimeFormat.decimalSeparator)
                     currentMentionBadgeImage = PresentationResourcesChatList.badgeBackgroundInactive(item.presentationData.theme, diameter: badgeDiameter)
                     mentionBadgeContent = .text(NSAttributedString(string: mutedUnreadCountText, font: badgeFont, textColor: theme.unreadBadgeInactiveTextColor))
                 }
             }
 
-            if !isPeerGroup {
+            if !isPeerGroup && displayUnreadActivityBadges {
                 let hasUnreadIncomingGramTransfer = messages.last.map { message in
                     guard let combinedReadState, combinedReadState.count > 0, !combinedReadState.isIncomingMessageIndexRead(message.index) else {
                         return false

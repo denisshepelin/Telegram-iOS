@@ -55,6 +55,21 @@ private enum ChatListRecentEntryStableId: Hashable {
     case footer
 }
 
+private func localUnreadIndicatorBadge(peer: EnginePeer?, threadId: Int64?, unreadCount: Int32?, muted: Bool, state: LocalUnreadIndicatorState?) -> ContactsPeerItemBadge? {
+    let indicator = state.map { localChatUnreadIndicator(peer: peer, threadId: threadId, isUnread: unreadCount != nil, state: $0) } ?? .normal
+    switch indicator {
+    case .normal:
+        guard let unreadCount else {
+            return nil
+        }
+        return ContactsPeerItemBadge(count: unreadCount, type: muted ? .inactive : .active)
+    case .hidden, .dot(false):
+        return nil
+    case .dot(true):
+        return ContactsPeerItemBadge(count: 0, type: .active)
+    }
+}
+
 private enum ChatListRecentEntry: Comparable, Identifiable {
     enum Section {
         case local
@@ -142,7 +157,8 @@ private enum ChatListRecentEntry: Comparable, Identifiable {
         openStories: @escaping (EnginePeer.Id, AvatarNode) -> Void,
         isChannelsTabExpanded: Bool?,
         toggleChannelsTabExpanded: @escaping () -> Void,
-        openTopAppsInfo: @escaping () -> Void
+        openTopAppsInfo: @escaping () -> Void,
+        localUnreadIndicatorState: LocalUnreadIndicatorState? = nil
     ) -> ListViewItem {
         switch self {
             case let .topPeers(peers, theme, strings):
@@ -271,10 +287,7 @@ private enum ChatListRecentEntry: Comparable, Identifiable {
                     }
                 }
 
-                var badge: ContactsPeerItemBadge?
-                if peer.unreadCount > 0 {
-                    badge = ContactsPeerItemBadge(count: peer.unreadCount, type: isMuted ? .inactive : .active)
-                }
+                let badge = localUnreadIndicatorBadge(peer: chatPeer, threadId: nil, unreadCount: peer.unreadCount > 0 ? peer.unreadCount : nil, muted: isMuted, state: localUnreadIndicatorState)
 
                 let header: ChatListSearchItemHeader?
                 if case .channels = key {
@@ -460,7 +473,7 @@ public enum ChatListSearchEntry: Comparable, Identifiable {
         case publicPosts
     }
 
-    case topic(EnginePeer, ChatListItemContent.ThreadInfo, Int, PresentationTheme, PresentationStrings, ChatListSearchSectionExpandType)
+    case topic(EnginePeer, ChatListItemContent.ThreadInfo, Bool, Int, PresentationTheme, PresentationStrings, ChatListSearchSectionExpandType)
     case recentlySearchedPeer(EnginePeer, EnginePeer?, (Int32, Bool)?, Int, PresentationTheme, PresentationStrings, PresentationPersonNameOrder, PresentationPersonNameOrder, PeerStoryStats?, Bool)
     case adPeer(AdPeer, Int, PresentationTheme, PresentationStrings, PresentationPersonNameOrder, PresentationPersonNameOrder, ChatListSearchSectionExpandType, String?)
     case localPeer(EnginePeer, EnginePeer?, (Int32, Bool)?, Int, PresentationTheme, PresentationStrings, PresentationPersonNameOrder, PresentationPersonNameOrder, ChatListSearchSectionExpandType, PeerStoryStats?, Bool, Bool)
@@ -472,7 +485,7 @@ public enum ChatListSearchEntry: Comparable, Identifiable {
 
     public var stableId: ChatListSearchEntryStableId {
         switch self {
-        case let .topic(_, threadInfo, _, _, _, _):
+        case let .topic(_, threadInfo, _, _, _, _, _):
             return .threadId(threadInfo.id)
         case let .recentlySearchedPeer(peer, _, _, _, _, _, _, _, _, _):
             return .localPeerId(peer.id)
@@ -495,8 +508,8 @@ public enum ChatListSearchEntry: Comparable, Identifiable {
 
     public static func ==(lhs: ChatListSearchEntry, rhs: ChatListSearchEntry) -> Bool {
         switch lhs {
-        case let .topic(lhsPeer, lhsThreadInfo, lhsIndex, lhsTheme, lhsStrings, lhsExpandType):
-            if case let .topic(rhsPeer, rhsThreadInfo, rhsIndex, rhsTheme, rhsStrings, rhsExpandType) = rhs, lhsPeer == rhsPeer, lhsThreadInfo == rhsThreadInfo, lhsIndex == rhsIndex, lhsTheme === rhsTheme, lhsStrings === rhsStrings, lhsExpandType == rhsExpandType {
+        case let .topic(lhsPeer, lhsThreadInfo, lhsIsUnread, lhsIndex, lhsTheme, lhsStrings, lhsExpandType):
+            if case let .topic(rhsPeer, rhsThreadInfo, rhsIsUnread, rhsIndex, rhsTheme, rhsStrings, rhsExpandType) = rhs, lhsPeer == rhsPeer, lhsThreadInfo == rhsThreadInfo, lhsIsUnread == rhsIsUnread, lhsIndex == rhsIndex, lhsTheme === rhsTheme, lhsStrings === rhsStrings, lhsExpandType == rhsExpandType {
                 return true
             } else {
                 return false
@@ -632,8 +645,8 @@ public enum ChatListSearchEntry: Comparable, Identifiable {
 
     public static func <(lhs: ChatListSearchEntry, rhs: ChatListSearchEntry) -> Bool {
         switch lhs {
-        case let .topic(_, _, lhsIndex, _, _, _):
-            if case let .topic(_, _, rhsIndex, _, _, _) = rhs {
+        case let .topic(_, _, _, lhsIndex, _, _, _):
+            if case let .topic(_, _, _, rhsIndex, _, _, _) = rhs {
                 return lhsIndex <= rhsIndex
             } else {
                 return true
@@ -730,10 +743,11 @@ public enum ChatListSearchEntry: Comparable, Identifiable {
         openStories: @escaping (EnginePeer.Id, AvatarNode) -> Void,
         openPublicPosts: @escaping () -> Void,
         openMessagesFilter: @escaping (ASDisplayNode) -> Void,
-        switchMessagesFilter: @escaping (TelegramSearchPeersScope) -> Void
+        switchMessagesFilter: @escaping (TelegramSearchPeersScope) -> Void,
+        localUnreadIndicatorState: LocalUnreadIndicatorState? = nil
     ) -> ListViewItem {
         switch self {
-            case let .topic(peer, threadInfo, _, theme, strings, expandType):
+            case let .topic(peer, threadInfo, isUnread, _, theme, strings, expandType):
                 let actionTitle: String?
                 switch expandType {
                 case .none:
@@ -747,7 +761,7 @@ public enum ChatListSearchEntry: Comparable, Identifiable {
                     toggleExpandGlobalResults()
                 })
 
-                return ContactsPeerItem(presentationData: ItemListPresentationData(presentationData), sortOrder: .firstLast, displayOrder: .firstLast, context: context, peerMode: .generalSearch(isSavedMessages: false), peer: .thread(peer: peer, title: threadInfo.info.title, icon: threadInfo.info.icon, color: threadInfo.info.iconColor), status: .none, badge: nil, enabled: true, selection: .none, editing: ContactsPeerItemEditing(editable: false, editing: false, revealed: false), index: nil, header: header, action: { _ in
+                return ContactsPeerItem(presentationData: ItemListPresentationData(presentationData), sortOrder: .firstLast, displayOrder: .firstLast, context: context, peerMode: .generalSearch(isSavedMessages: false), peer: .thread(peer: peer, title: threadInfo.info.title, icon: threadInfo.info.icon, color: threadInfo.info.iconColor), status: .none, badge: localUnreadIndicatorState.flatMap { state in localUnreadIndicatorBadge(peer: peer, threadId: threadInfo.id, unreadCount: isUnread ? 1 : nil, muted: false, state: state) }, enabled: true, selection: .none, editing: ContactsPeerItemEditing(editable: false, editing: false, revealed: false), index: nil, header: header, action: { _ in
                     interaction.peerSelected(peer, nil, threadInfo.id, nil, false)
                 }, contextAction: nil, animationCache: interaction.animationCache, animationRenderer: interaction.animationRenderer)
             case let .recentlySearchedPeer(peer, associatedPeer, unreadBadge, _, theme, strings, nameSortOrder, nameDisplayOrder, storyStats, requiresPremiumForMessaging):
@@ -797,10 +811,7 @@ public enum ChatListSearchEntry: Comparable, Identifiable {
                     }
                 }
 
-                var badge: ContactsPeerItemBadge?
-                if let unreadBadge = unreadBadge {
-                    badge = ContactsPeerItemBadge(count: unreadBadge.0, type: unreadBadge.1 ? .inactive : .active)
-                }
+                let badge = localUnreadIndicatorBadge(peer: chatPeer, threadId: nil, unreadCount: unreadBadge?.0, muted: unreadBadge?.1 ?? false, state: localUnreadIndicatorState)
 
                 var buttonAction: ContactsPeerItemButtonAction?
                 let header: ChatListSearchItemHeader?
@@ -937,10 +948,7 @@ public enum ChatListSearchEntry: Comparable, Identifiable {
                     }
                 }
 
-                var badge: ContactsPeerItemBadge?
-                if let unreadBadge = unreadBadge {
-                    badge = ContactsPeerItemBadge(count: unreadBadge.0, type: unreadBadge.1 ? .inactive : .active)
-                }
+                let badge = localUnreadIndicatorBadge(peer: chatPeer, threadId: nil, unreadCount: unreadBadge?.0, muted: unreadBadge?.1 ?? false, state: localUnreadIndicatorState)
 
                 let header: ChatListSearchItemHeader?
                 if filter.contains(.removeSearchHeader) {
@@ -1061,10 +1069,7 @@ public enum ChatListSearchEntry: Comparable, Identifiable {
                     }
                 }
 
-                var badge: ContactsPeerItemBadge?
-                if let unreadBadge = unreadBadge {
-                    badge = ContactsPeerItemBadge(count: unreadBadge.0, type: unreadBadge.1 ? .inactive : .active)
-                }
+                let badge = localUnreadIndicatorBadge(peer: peer.peer, threadId: nil, unreadCount: unreadBadge?.0, muted: unreadBadge?.1 ?? false, state: localUnreadIndicatorState)
 
                 let header: ChatListSearchItemHeader?
                 if filter.contains(.removeSearchHeader) {
@@ -1360,13 +1365,14 @@ private func chatListSearchContainerPreparedRecentTransition(
     openTopAppsInfo: @escaping () -> Void,
     isChannelsTabExpanded: Bool?,
     toggleChannelsTabExpanded: @escaping () -> Void,
-    isEmpty: Bool
+    isEmpty: Bool,
+    localUnreadIndicatorState: LocalUnreadIndicatorState?
 ) -> ChatListSearchContainerRecentTransition {
     let (deleteIndices, indicesAndItems, updateIndices) = mergeListsStableWithUpdates(leftList: fromEntries, rightList: toEntries, allUpdated: forceUpdateAll)
 
     let deletions = deleteIndices.map { ListViewDeleteItem(index: $0, directionHint: nil) }
-    let insertions = indicesAndItems.map { ListViewInsertItem(index: $0.0, previousIndex: $0.2, item: $0.1.item(context: context, presentationData: presentationData, filter: filter, key: key, peerSelected: peerSelected, disabledPeerSelected: disabledPeerSelected, peerContextAction: peerContextAction, clearRecentlySearchedPeers: clearRecentlySearchedPeers, deletePeer: deletePeer, animationCache: animationCache, animationRenderer: animationRenderer, openStories: openStories, isChannelsTabExpanded: isChannelsTabExpanded, toggleChannelsTabExpanded: toggleChannelsTabExpanded, openTopAppsInfo: openTopAppsInfo), directionHint: nil) }
-    let updates = updateIndices.map { ListViewUpdateItem(index: $0.0, previousIndex: $0.2, item: $0.1.item(context: context, presentationData: presentationData, filter: filter, key: key, peerSelected: peerSelected, disabledPeerSelected: disabledPeerSelected, peerContextAction: peerContextAction, clearRecentlySearchedPeers: clearRecentlySearchedPeers, deletePeer: deletePeer, animationCache: animationCache, animationRenderer: animationRenderer, openStories: openStories, isChannelsTabExpanded: isChannelsTabExpanded, toggleChannelsTabExpanded: toggleChannelsTabExpanded, openTopAppsInfo: openTopAppsInfo), directionHint: nil) }
+    let insertions = indicesAndItems.map { ListViewInsertItem(index: $0.0, previousIndex: $0.2, item: $0.1.item(context: context, presentationData: presentationData, filter: filter, key: key, peerSelected: peerSelected, disabledPeerSelected: disabledPeerSelected, peerContextAction: peerContextAction, clearRecentlySearchedPeers: clearRecentlySearchedPeers, deletePeer: deletePeer, animationCache: animationCache, animationRenderer: animationRenderer, openStories: openStories, isChannelsTabExpanded: isChannelsTabExpanded, toggleChannelsTabExpanded: toggleChannelsTabExpanded, openTopAppsInfo: openTopAppsInfo, localUnreadIndicatorState: localUnreadIndicatorState), directionHint: nil) }
+    let updates = updateIndices.map { ListViewUpdateItem(index: $0.0, previousIndex: $0.2, item: $0.1.item(context: context, presentationData: presentationData, filter: filter, key: key, peerSelected: peerSelected, disabledPeerSelected: disabledPeerSelected, peerContextAction: peerContextAction, clearRecentlySearchedPeers: clearRecentlySearchedPeers, deletePeer: deletePeer, animationCache: animationCache, animationRenderer: animationRenderer, openStories: openStories, isChannelsTabExpanded: isChannelsTabExpanded, toggleChannelsTabExpanded: toggleChannelsTabExpanded, openTopAppsInfo: openTopAppsInfo, localUnreadIndicatorState: localUnreadIndicatorState), directionHint: nil) }
 
     return ChatListSearchContainerRecentTransition(deletions: deletions, insertions: insertions, updates: updates, isEmpty: isEmpty)
 }
@@ -1403,13 +1409,15 @@ public func chatListSearchContainerPreparedTransition(
     openStories: @escaping (EnginePeer.Id, AvatarNode) -> Void,
     openPublicPosts: @escaping () -> Void,
     openMessagesFilter: @escaping (ASDisplayNode) -> Void,
-    switchMessagesFilter: @escaping (TelegramSearchPeersScope) -> Void
+    switchMessagesFilter: @escaping (TelegramSearchPeersScope) -> Void,
+    forceUpdateAll: Bool = false,
+    localUnreadIndicatorState: LocalUnreadIndicatorState? = nil
 ) -> ChatListSearchContainerTransition {
-    let (deleteIndices, indicesAndItems, updateIndices) = mergeListsStableWithUpdates(leftList: fromEntries, rightList: toEntries)
+    let (deleteIndices, indicesAndItems, updateIndices) = mergeListsStableWithUpdates(leftList: fromEntries, rightList: toEntries, allUpdated: forceUpdateAll)
 
     let deletions = deleteIndices.map { ListViewDeleteItem(index: $0, directionHint: nil) }
-    let insertions = indicesAndItems.map { ListViewInsertItem(index: $0.0, previousIndex: $0.2, item: $0.1.item(context: context, presentationData: presentationData, enableHeaders: enableHeaders, filter: filter, requestPeerType: requestPeerType, location: location, communityId: communityId, key: key, tagMask: tagMask, interaction: interaction, listInteraction: listInteraction, peerContextAction: peerContextAction, toggleExpandLocalResults: toggleExpandLocalResults, toggleExpandGlobalResults: toggleExpandGlobalResults, searchPeer: searchPeer, searchQuery: searchQuery, searchOptions: searchOptions, messageContextAction: messageContextAction, openClearRecentlyDownloaded: openClearRecentlyDownloaded, toggleAllPaused: toggleAllPaused, openStories: openStories, openPublicPosts: openPublicPosts, openMessagesFilter: openMessagesFilter, switchMessagesFilter: switchMessagesFilter), directionHint: nil) }
-    let updates = updateIndices.map { ListViewUpdateItem(index: $0.0, previousIndex: $0.2, item: $0.1.item(context: context, presentationData: presentationData, enableHeaders: enableHeaders, filter: filter, requestPeerType: requestPeerType, location: location, communityId: communityId, key: key, tagMask: tagMask, interaction: interaction, listInteraction: listInteraction, peerContextAction: peerContextAction, toggleExpandLocalResults: toggleExpandLocalResults, toggleExpandGlobalResults: toggleExpandGlobalResults, searchPeer: searchPeer, searchQuery: searchQuery, searchOptions: searchOptions, messageContextAction: messageContextAction, openClearRecentlyDownloaded: openClearRecentlyDownloaded, toggleAllPaused: toggleAllPaused, openStories: openStories, openPublicPosts: openPublicPosts, openMessagesFilter: openMessagesFilter, switchMessagesFilter: switchMessagesFilter), directionHint: nil) }
+    let insertions = indicesAndItems.map { ListViewInsertItem(index: $0.0, previousIndex: $0.2, item: $0.1.item(context: context, presentationData: presentationData, enableHeaders: enableHeaders, filter: filter, requestPeerType: requestPeerType, location: location, communityId: communityId, key: key, tagMask: tagMask, interaction: interaction, listInteraction: listInteraction, peerContextAction: peerContextAction, toggleExpandLocalResults: toggleExpandLocalResults, toggleExpandGlobalResults: toggleExpandGlobalResults, searchPeer: searchPeer, searchQuery: searchQuery, searchOptions: searchOptions, messageContextAction: messageContextAction, openClearRecentlyDownloaded: openClearRecentlyDownloaded, toggleAllPaused: toggleAllPaused, openStories: openStories, openPublicPosts: openPublicPosts, openMessagesFilter: openMessagesFilter, switchMessagesFilter: switchMessagesFilter, localUnreadIndicatorState: localUnreadIndicatorState), directionHint: nil) }
+    let updates = updateIndices.map { ListViewUpdateItem(index: $0.0, previousIndex: $0.2, item: $0.1.item(context: context, presentationData: presentationData, enableHeaders: enableHeaders, filter: filter, requestPeerType: requestPeerType, location: location, communityId: communityId, key: key, tagMask: tagMask, interaction: interaction, listInteraction: listInteraction, peerContextAction: peerContextAction, toggleExpandLocalResults: toggleExpandLocalResults, toggleExpandGlobalResults: toggleExpandGlobalResults, searchPeer: searchPeer, searchQuery: searchQuery, searchOptions: searchOptions, messageContextAction: messageContextAction, openClearRecentlyDownloaded: openClearRecentlyDownloaded, toggleAllPaused: toggleAllPaused, openStories: openStories, openPublicPosts: openPublicPosts, openMessagesFilter: openMessagesFilter, switchMessagesFilter: switchMessagesFilter, localUnreadIndicatorState: localUnreadIndicatorState), directionHint: nil) }
 
     return ChatListSearchContainerTransition(deletions: deletions, insertions: insertions, updates: updates, displayingResults: displayingResults, isEmpty: isEmpty, isLoading: isLoading, query: searchQuery, approvedGlobalPostQueryState: approvedGlobalPostQueryState, globalSearchStateValue: globalSearchStateValue, animated: animated)
 }
@@ -1419,6 +1427,7 @@ private struct ChatListSearchListPaneNodeState: Equatable {
     var expandGlobalSearch: Bool = false
     var deletedMessageIds = Set<EngineMessage.Id>()
     var deletedGlobalMessageIds = Set<Int32>()
+    var localUnreadIndicatorState: LocalUnreadIndicatorState? = LocalUnreadIndicatorState(settings: LocalUnreadIndicatorSettings.defaultSettings, unreadEnabledPeers: [])
 }
 
 private func doesPeerMatchFilter(peer: EnginePeer, filter: ChatListNodePeersFilter) -> Bool {
@@ -1679,6 +1688,7 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
     private var presentationDataDisposable: Disposable?
     private let updatedRecentPeersDisposable = MetaDisposable()
     private let recentDisposable = MetaDisposable()
+    private var localUnreadIndicatorStateDisposable: Disposable?
 
     private let searchDisposable = MetaDisposable()
     private let presentationDataPromise = Promise<ChatListPresentationData>()
@@ -1922,6 +1932,15 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
         }
 
         super.init()
+
+        self.localUnreadIndicatorStateDisposable = (localUnreadIndicatorState(postbox: context.account.postbox)
+        |> deliverOnMainQueue).startStrict(next: { [weak self] state in
+            self?.updateState { current in
+                var current = current
+                current.localUnreadIndicatorState = state
+                return current
+            }
+        })
 
         self.emptyResultsAnimationNode.setup(source: AnimatedStickerNodeLocalFileSource(name: "ChatListNoResults"), width: 256, height: 256, playbackMode: .once, mode: .direct(cachePathPrefix: nil))
         self.emptyResultsAnimationSize = CGSize(width: 148.0, height: 148.0)
@@ -3019,7 +3038,7 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
 
                 for thread in allAndFoundThreads {
                     if let peer = thread.renderedPeer.peer, let threadData = thread.threadData, case let .forum(_, _, id, _, _) = thread.index {
-                        entries.append(.topic(peer, ChatListItemContent.ThreadInfo(id: id, info: threadData.info, isOwnedByMe: threadData.isOwnedByMe, isClosed: threadData.isClosed, isHidden: threadData.isHidden, threadPeer: nil), index, presentationData.theme, presentationData.strings, .none))
+                        entries.append(.topic(peer, ChatListItemContent.ThreadInfo(id: id, info: threadData.info, isOwnedByMe: threadData.isOwnedByMe, isClosed: threadData.isClosed, isHidden: threadData.isHidden, threadPeer: nil), threadData.incomingUnreadCount > 0, index, presentationData.theme, presentationData.strings, .none))
                         index += 1
                     }
                 }
@@ -3780,6 +3799,7 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
         let previousSelectedMessages = Atomic<Set<EngineMessage.Id>?>(value: nil)
         let previousExpandGlobalSearch = Atomic<Bool>(value: false)
         let previousAdsHidden = Atomic<Bool>(value: false)
+        let previousLocalUnreadIndicatorState = Atomic<LocalUnreadIndicatorState?>(value: nil)
 
         self.searchQueryDisposable = (searchQuery
         |> deliverOnMainQueue).startStrict(next: { [weak self, weak listInteraction, weak chatListInteraction] query in
@@ -3924,6 +3944,7 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
                 let previousSelectedMessageIds = previousSelectedMessages.swap(strongSelf.selectedMessages)
                 let previousExpandGlobalSearch = previousExpandGlobalSearch.swap(strongSelf.searchStateValue.expandGlobalSearch)
                 let previousAdsHidden = previousAdsHidden.swap(strongSelf.adsHidden)
+                let previousLocalUnreadIndicatorState = previousLocalUnreadIndicatorState.swap(strongSelf.searchStateValue.localUnreadIndicatorState)
 
                 var entriesAndFlags = foundItems?.0
 
@@ -3965,6 +3986,7 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
                 let selectionChanged = (previousSelectedMessageIds == nil) != (strongSelf.selectedMessages == nil)
                 let expandGlobalSearchChanged = previousExpandGlobalSearch != strongSelf.searchStateValue.expandGlobalSearch
                 let adsHiddenChanged = previousAdsHidden != strongSelf.adsHidden
+                let localUnreadIndicatorStateChanged = previousLocalUnreadIndicatorState != strongSelf.searchStateValue.localUnreadIndicatorState
 
                 let animated = selectionChanged || expandGlobalSearchChanged || adsHiddenChanged
                 let firstTime = previousEntries == nil || previousQuery != currentQuery
@@ -4073,7 +4095,7 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
                         return
                     }
                     strongSelf.searchScopePromise.set(.everywhere)
-                })
+                }, forceUpdateAll: localUnreadIndicatorStateChanged, localUnreadIndicatorState: strongSelf.searchStateValue.localUnreadIndicatorState)
                 strongSelf.currentEntries = newEntries
                 if strongSelf.key == .downloads {
                     if !firstTime, !"".isEmpty {
@@ -4093,6 +4115,7 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
         }))
 
         let previousRecentItemsValue = Atomic<RecentItems?>(value: nil)
+        let previousRecentLocalUnreadIndicatorState = Atomic<LocalUnreadIndicatorState?>(value: nil)
         let hasRecentPeers: Signal<Bool, NoError>
         if case .channels = key {
             hasRecentPeers = .single(false)
@@ -4556,11 +4579,13 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
 
         self.recentDisposable.set((combineLatest(queue: .mainQueue(),
             presentationDataPromise.get(),
-            recentItems
+            recentItems,
+            searchStatePromise.get()
         )
-        |> deliverOnMainQueue).startStrict(next: { [weak self] presentationData, recentItems in
+        |> deliverOnMainQueue).startStrict(next: { [weak self] presentationData, recentItems, searchState in
             if let strongSelf = self {
                 let previousRecentItems = previousRecentItemsValue.swap(recentItems)
+                let previousLocalUnreadIndicatorState = previousRecentLocalUnreadIndicatorState.swap(searchState.localUnreadIndicatorState)
 
                 var firstTime = previousRecentItems == nil
                 var forceUpdateAll = false
@@ -4575,6 +4600,9 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
                         firstTime = true
                         forceUpdateAll = true
                     }
+                }
+                if previousLocalUnreadIndicatorState != searchState.localUnreadIndicatorState {
+                    forceUpdateAll = true
                 }
 
                 let transition = chatListSearchContainerPreparedRecentTransition(from: previousRecentItems?.entries ?? [], to: recentItems.entries, forceUpdateAll: forceUpdateAll, context: context, presentationData: presentationData, filter: peersFilter, key: key, peerSelected: { peer, threadId, isRecommended, action in
@@ -4727,7 +4755,7 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
                 isChannelsTabExpanded: recentItems.isChannelsTabExpanded,
                 toggleChannelsTabExpanded: {
                     toggleChannelsTabExpanded()
-                }, isEmpty: recentItems.isEmpty)
+                }, isEmpty: recentItems.isEmpty, localUnreadIndicatorState: searchState.localUnreadIndicatorState)
                 strongSelf.enqueueRecentTransition(transition, firstTime: firstTime)
             }
         }))
@@ -4865,6 +4893,7 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
         self.mediaStatusDisposable?.dispose()
         self.playlistPreloadDisposable?.dispose()
         self.recentDisposable.dispose()
+        self.localUnreadIndicatorStateDisposable?.dispose()
         self.updatedRecentPeersDisposable.dispose()
         self.deletedMessagesDisposable?.dispose()
         self.searchQueryDisposable?.dispose()

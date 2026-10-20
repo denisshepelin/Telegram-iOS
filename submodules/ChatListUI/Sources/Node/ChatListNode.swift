@@ -497,7 +497,8 @@ private func mappedInsertEntries(context: AccountContext, nodeInteraction: ChatL
                             },
                             requiresPremiumForMessaging: peerEntry.requiresPremiumForMessaging,
                             displayAsTopicList: peerEntry.displayAsTopicList,
-                            tags: chatListItemTags(location: location, accountPeerId: context.account.peerId, isPremium: isPremium, peer: peer.chatMainPeer, isUnread: combinedReadState?.isUnread ?? false, isMuted: isRemovedFromTotalUnreadCount, isContact: isContact, hasUnseenMentions: hasUnseenMentions, chatListFilters: chatListFilters)
+                            tags: chatListItemTags(location: location, accountPeerId: context.account.peerId, isPremium: isPremium, peer: peer.chatMainPeer, isUnread: combinedReadState?.isUnread ?? false, isMuted: isRemovedFromTotalUnreadCount, isContact: isContact, hasUnseenMentions: hasUnseenMentions, chatListFilters: chatListFilters),
+                            unreadIndicator: peerEntry.unreadIndicator
                         )),
                         editing: editing,
                         hasActiveRevealControls: hasActiveRevealControls,
@@ -869,7 +870,8 @@ private func mappedUpdateEntries(context: AccountContext, nodeInteraction: ChatL
                                 },
                                 requiresPremiumForMessaging: peerEntry.requiresPremiumForMessaging,
                                 displayAsTopicList: peerEntry.displayAsTopicList,
-                                tags: chatListItemTags(location: location, accountPeerId: context.account.peerId, isPremium: isPremium, peer: peer.chatMainPeer, isUnread: combinedReadState?.isUnread ?? false, isMuted: isRemovedFromTotalUnreadCount, isContact: isContact, hasUnseenMentions: hasUnseenMentions, chatListFilters: chatListFilters)
+                                tags: chatListItemTags(location: location, accountPeerId: context.account.peerId, isPremium: isPremium, peer: peer.chatMainPeer, isUnread: combinedReadState?.isUnread ?? false, isMuted: isRemovedFromTotalUnreadCount, isContact: isContact, hasUnseenMentions: hasUnseenMentions, chatListFilters: chatListFilters),
+                                unreadIndicator: peerEntry.unreadIndicator
                             )),
                             editing: editing,
                             hasActiveRevealControls: hasActiveRevealControls,
@@ -2201,6 +2203,25 @@ public final class ChatListNode: ListViewImpl {
         }
         |> distinctUntilChanged
         
+        let localUnreadStateSignal: Signal<LocalUnreadIndicatorState, NoError>
+        if case .chatList = mode, case .savedMessagesChats = location {
+            localUnreadStateSignal = .single(LocalUnreadIndicatorState(settings: .defaultSettings))
+        } else if case .chatList = mode {
+            localUnreadStateSignal = localUnreadIndicatorState(postbox: context.account.postbox)
+        } else {
+            localUnreadStateSignal = .single(LocalUnreadIndicatorState(settings: .defaultSettings))
+        }
+        let localUnreadPresentation = localUnreadStateSignal
+        |> mapToSignal { state -> Signal<(LocalUnreadIndicatorState, Int), NoError> in
+            guard case .chatList = mode, location == .chatList(groupId: .root), chatListFilter == nil else {
+                return .single((state, 0))
+            }
+            return localArchiveUnreadCount(postbox: context.account.postbox, state: state)
+            |> map { count in
+                return (state, count)
+            }
+        }
+
         let chatListNodeViewTransition = combineLatest(queue: viewProcessingQueue,
             hideArchivedFolderByDefault,
             displayArchiveIntro,
@@ -2211,9 +2232,10 @@ public final class ChatListNode: ListViewImpl {
             contacts,
             chatListFilters,
             accountIsPremium,
-            displayStories
+            combineLatest(displayStories, localUnreadPresentation)
         )
-        |> mapToQueue { (hideArchivedFolderByDefault, displayArchiveIntro, storageInfo, savedMessagesPeer, updateAndFilter, state, contacts, chatListFilters, accountIsPremium, displayStories) -> Signal<ChatListNodeListViewTransition, NoError> in
+        |> mapToQueue { (hideArchivedFolderByDefault, displayArchiveIntro, storageInfo, savedMessagesPeer, updateAndFilter, state, contacts, chatListFilters, accountIsPremium, storiesAndUnreadPresentation) -> Signal<ChatListNodeListViewTransition, NoError> in
+            let (displayStories, (localUnreadState, archiveUnreadCount)) = storiesAndUnreadPresentation
             let (update, filter) = updateAndFilter
             
             let previousHideArchivedFolderByDefaultValue = previousHideArchivedFolderByDefault.swap(hideArchivedFolderByDefault)
@@ -2221,8 +2243,43 @@ public final class ChatListNode: ListViewImpl {
             let innerIsMainTab = location == .chatList(groupId: .root) && chatListFilter == nil
             
             let (rawEntries, isLoading) = chatListNodeEntriesForView(view: update.list, state: state, savedMessagesPeer: savedMessagesPeer, foundPeers: state.foundPeers, hideArchivedFolderByDefault: hideArchivedFolderByDefault, displayArchiveIntro: displayArchiveIntro, mode: mode, chatListLocation: location, contacts: contacts, accountPeerId: accountPeerId, isMainTab: innerIsMainTab, displayStories: displayStories)
+            let presentedEntries = rawEntries.map { entry -> ChatListNodeEntry in
+                guard case .chatList = mode else {
+                    return entry
+                }
+                if case .savedMessagesChats = location {
+                    return entry
+                }
+                switch entry {
+                case var .PeerEntry(peerEntry):
+                    let peer = peerEntry.peer.chatMainPeer
+                    peerEntry.unreadIndicator = localChatUnreadIndicator(peer: peer, threadId: peerEntry.threadInfo?.id, isUnread: peerEntry.readState?.isUnread ?? false, state: localUnreadState)
+                    peerEntry.topForumTopicItems = peerEntry.topForumTopicItems.map { localChatTopicUnreadPresentation($0, peer: peer, state: localUnreadState) }
+                    return .PeerEntry(peerEntry)
+                case var .GroupReferenceEntry(groupEntry):
+                    if groupEntry.groupId == .archive {
+                        groupEntry.unreadCount = archiveUnreadCount
+                        groupEntry.peers = groupEntry.peers.map { item in
+                            let indicator = localChatUnreadIndicator(peer: item.peer.chatMainPeer, threadId: nil, isUnread: item.isUnread, state: localUnreadState)
+                            let isUnread: Bool
+                            switch indicator {
+                            case .normal:
+                                isUnread = item.isUnread
+                            case .hidden:
+                                isUnread = false
+                            case let .dot(value):
+                                isUnread = value
+                            }
+                            return EngineChatList.GroupItem.Item(peer: item.peer, isUnread: isUnread)
+                        }
+                    }
+                    return .GroupReferenceEntry(groupEntry)
+                default:
+                    return entry
+                }
+            }
             var isEmpty = true
-            var entries = rawEntries.filter { entry in
+            var entries = presentedEntries.filter { entry in
                 switch entry {
                 case let .PeerEntry(peerEntry):
                     let peer = peerEntry.peer

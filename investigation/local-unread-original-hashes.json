@@ -1,0 +1,14 @@
+{
+  "submodules/ChatListUI/Sources/ChatContextMenus.swift": "25fa705ee9446d76e2754fe9ddfe908651895bcced5762d463d529a4a8e2c1c9",
+  "submodules/ChatListUI/Sources/ChatListSearchListPaneNode.swift": "b498040ea8215fcf36d89131b61b0bcedf8a3f50a70802ddba594b626f0e9931",
+  "submodules/ChatListUI/Sources/Node/ChatListItem.swift": "325e8bba7f94ccbebc484183730e2e11fcd2bcbd7cd12a870c529506540be251",
+  "submodules/ChatListUI/Sources/Node/ChatListNode.swift": "a5b9fdb6d8b1c5b646535aa77f6eb63920262332ede70c66c8960593f3c8d302",
+  "submodules/ChatListUI/Sources/Node/ChatListNodeEntries.swift": "b6bf25be4da43ec5ae3d1b5c73bc40fef3368df3d71470fadd62cc2eafbfdd7d",
+  "submodules/ChatListUI/Sources/Node/LocalArchiveUnreadIndicator.swift": null,
+  "submodules/ChatListUI/Sources/Node/LocalChatUnreadIndicator.swift": null,
+  "submodules/Postbox/Sources/ChatListView.swift": "4999f2943c3fdbef3076015a60108031139bcf82222e2b4f4301586ff4d64139",
+  "submodules/Postbox/Sources/MessageHistoryThreadIndexView.swift": "bf599cf182c106212310596c8b677a990fb50231627fa18604098f9be3c272ea",
+  "submodules/Postbox/Sources/MutableBasicPeerView.swift": "36f72ae1d9d1e28ae91b607edf75fd4b0bd93d71e8abc258ad6371815f1cb814",
+  "submodules/TelegramUIPreferences/Sources/LocalUnreadIndicatorSettings.swift": null,
+  "submodules/TelegramUIPreferences/Sources/PostboxKeys.swift": "0affa9479eb0fe12c526ee4c24fc14f9ad19eb22cb43ff240c25699d97ee40d1"
+}

@@ -44,7 +44,32 @@ final class MutableBasicPeerView: MutablePostboxView {
     }
 
     func refreshDueToExternalTransaction(postbox: PostboxImpl) -> Bool {
-        return false
+        let peer = postbox.peerTable.get(self.peerId)
+        let notificationSettings = postbox.peerNotificationSettingsTable.getEffective(self.peerId)
+        let isContact = postbox.contactsTable.isContact(peerId: self.peerId)
+        let groupId = postbox.chatListIndexTable.get(peerId: self.peerId).inclusion.groupId
+
+        var updated = !arePeersEqual(self.peer, peer)
+        switch (self.notificationSettings, notificationSettings) {
+        case (nil, nil):
+            break
+        case let (lhs?, rhs?):
+            if !lhs.isEqual(to: rhs) {
+                updated = true
+            }
+        default:
+            updated = true
+        }
+        if self.isContact != isContact || self.groupId != groupId {
+            updated = true
+        }
+
+        self.peer = peer
+        self.notificationSettings = notificationSettings
+        self.isContact = isContact
+        self.groupId = groupId
+
+        return updated
     }
     
     func immutableView() -> PostboxView {

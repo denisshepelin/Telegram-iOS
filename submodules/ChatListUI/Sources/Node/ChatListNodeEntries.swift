@@ -99,6 +99,7 @@ enum ChatListNodeEntry: Comparable, Identifiable {
         var presentationData: ChatListPresentationData
         var messages: [EngineMessage]
         var readState: EnginePeerReadCounters?
+        var unreadIndicator: ChatListUnreadIndicator = .normal
         var isRemovedFromTotalUnreadCount: Bool
         var draftState: ChatListItemContent.DraftState?
         var mediaDraftContentType: EngineChatList.MediaDraftContentType?
@@ -189,6 +190,9 @@ enum ChatListNodeEntry: Comparable, Identifiable {
                 return false
             }
             if lhs.presentationData !== rhs.presentationData {
+                return false
+            }
+            if lhs.unreadIndicator != rhs.unreadIndicator {
                 return false
             }
             if lhs.readState != rhs.readState {

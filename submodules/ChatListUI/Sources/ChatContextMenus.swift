@@ -115,8 +115,12 @@ func chatContextMenuItems(context: AccountContext, peerId: EnginePeer.Id, promoI
             
             let renderedPeer = context.engine.data.get(TelegramEngine.EngineData.Item.Peer.RenderedPeer(id: peerId))
             
-            return renderedPeer
-            |> mapToSignal { [chatListController] renderedPeer -> Signal<[ContextMenuItem], NoError> in
+            return combineLatest(
+                renderedPeer,
+                localUnreadIndicatorSettings(postbox: context.account.postbox)
+                |> take(1)
+            )
+            |> mapToSignal { [chatListController] renderedPeer, localUnreadSettings -> Signal<[ContextMenuItem], NoError> in
                 guard let renderedPeer = renderedPeer else {
                     return .single([])
                 }
@@ -385,6 +389,29 @@ func chatContextMenuItems(context: AccountContext, peerId: EnginePeer.Id, promoI
                                 }
                             }
                         }
+
+                        let localUnreadIndicatorPeerId: EnginePeer.Id?
+                        switch peer {
+                        case .legacyGroup:
+                            localUnreadIndicatorPeerId = peer.id
+                        case .channel where !isForum:
+                            localUnreadIndicatorPeerId = peer.id
+                        default:
+                            localUnreadIndicatorPeerId = nil
+                        }
+                        if let localUnreadIndicatorPeerId {
+                            let isLocalUnreadIndicatorEnabled = localUnreadSettings.isPeerEnabled(peerId: localUnreadIndicatorPeerId)
+                            items.append(.action(ContextMenuActionItem(text: isLocalUnreadIndicatorEnabled ? "Hide unread dot" : "Show unread dot", icon: { theme in
+                                generateTintedImage(image: UIImage(bundleImageName: isLocalUnreadIndicatorEnabled ? "Chat/Context Menu/MarkAsRead" : "Chat/Context Menu/MarkAsUnread"), color: theme.contextMenu.primaryColor)
+                            }, action: { _, f in
+                                let _ = (updateLocalUnreadIndicatorSettingsInteractively(postbox: context.account.postbox, { current in
+                                    current.withUpdatedPeer(peerId: localUnreadIndicatorPeerId, enabled: !isLocalUnreadIndicatorEnabled)
+                                })
+                                |> deliverOnMainQueue).startStandalone(completed: {
+                                    f(.default)
+                                })
+                            })))
+                        }
                         
                         let archiveEnabled = !isSavedMessages && peerId != EnginePeer.Id(namespace: Namespaces.Peer.CloudUser, id: EnginePeer.Id.Id._internalFromInt64Value(777000)) && peerId == context.account.peerId
                         if let group = peerGroup {
@@ -614,13 +641,18 @@ public func chatForumTopicMenuItems(context: AccountContext, peerId: EnginePeer.
     let presentationData = context.sharedContext.currentPresentationData.with({ $0 })
     let strings = presentationData.strings
 
-    return context.engine.data.get(
-        TelegramEngine.EngineData.Item.Peer.Peer(id: peerId),
-        TelegramEngine.EngineData.Item.Peer.NotificationSettings(id: peerId),
-        TelegramEngine.EngineData.Item.Peer.ThreadData(id: peerId, threadId: threadId),
-        TelegramEngine.EngineData.Item.NotificationSettings.Global()
+    return combineLatest(
+        context.engine.data.get(
+            TelegramEngine.EngineData.Item.Peer.Peer(id: peerId),
+            TelegramEngine.EngineData.Item.Peer.NotificationSettings(id: peerId),
+            TelegramEngine.EngineData.Item.Peer.ThreadData(id: peerId, threadId: threadId),
+            TelegramEngine.EngineData.Item.NotificationSettings.Global()
+        ),
+        localUnreadIndicatorSettings(postbox: context.account.postbox)
+        |> take(1)
     )
-    |> mapToSignal { [chatListController] peer, peerNotificationSettings, threadData, globalNotificationSettings -> Signal<[ContextMenuItem], NoError> in
+    |> mapToSignal { [chatListController] peerData, localUnreadSettings -> Signal<[ContextMenuItem], NoError> in
+        let (peer, peerNotificationSettings, threadData, globalNotificationSettings) = peerData
         guard let peer else {
             return .single([])
         }
@@ -692,6 +724,20 @@ public func chatForumTopicMenuItems(context: AccountContext, peerId: EnginePeer.
             items.append(.action(ContextMenuActionItem(text: strings.ChatList_Context_MarkAsRead, icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/MarkAsRead"), color: theme.contextMenu.primaryColor) }, action: { _, f in
                 let _ = context.engine.messages.markForumThreadAsRead(peerId: peerId, threadId: threadId).startStandalone()
                 f(.default)
+            })))
+        }
+
+        if peerId != context.account.peerId, case let .channel(channel) = peer, channel.isForumOrMonoForum {
+            let isLocalUnreadIndicatorEnabled = localUnreadSettings.isTopicEnabled(peerId: peerId, threadId: threadId)
+            items.append(.action(ContextMenuActionItem(text: isLocalUnreadIndicatorEnabled ? "Hide unread dot" : "Show unread dot", icon: { theme in
+                generateTintedImage(image: UIImage(bundleImageName: isLocalUnreadIndicatorEnabled ? "Chat/Context Menu/MarkAsRead" : "Chat/Context Menu/MarkAsUnread"), color: theme.contextMenu.primaryColor)
+            }, action: { _, f in
+                let _ = (updateLocalUnreadIndicatorSettingsInteractively(postbox: context.account.postbox, { current in
+                    current.withUpdatedTopic(peerId: peerId, threadId: threadId, enabled: !isLocalUnreadIndicatorEnabled)
+                })
+                |> deliverOnMainQueue).startStandalone(completed: {
+                    f(.default)
+                })
             })))
         }
         

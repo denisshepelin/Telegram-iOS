@@ -231,7 +231,9 @@ final class MutableMessageHistoryThreadInfoView: MutablePostboxView {
     }
 
     func refreshDueToExternalTransaction(postbox: PostboxImpl) -> Bool {
-        return false
+        let previousInfo = self.info
+        self.reload(postbox: postbox)
+        return previousInfo != self.info
     }
     
     func immutableView() -> PostboxView {

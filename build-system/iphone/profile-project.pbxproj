@@ -1,0 +1,21 @@
+// !$*UTF8*$!
+{
+    archiveVersion = 1;
+    classes = {};
+    objectVersion = 56;
+    objects = {
+        A10000000000000000000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+        A10000000000000000000002 = {isa = PBXBuildFile; fileRef = A10000000000000000000001; };
+        A10000000000000000000003 = {isa = PBXGroup; children = (A10000000000000000000001,); sourceTree = "<group>"; };
+        A10000000000000000000005 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000002,); runOnlyForDeploymentPostprocessing = 0; };
+        A10000000000000000000006 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+        A10000000000000000000007 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+        A10000000000000000000008 = {isa = PBXNativeTarget; buildConfigurationList = A1000000000000000000000B; buildPhases = (A10000000000000000000005,A10000000000000000000006,A10000000000000000000007,); buildRules = (); dependencies = (); name = ProfileMint; productName = ProfileMint; productType = "com.apple.product-type.application"; };
+        A10000000000000000000009 = {isa = PBXProject; attributes = {BuildIndependentTargetsInParallel = 1; TargetAttributes = {A10000000000000000000008 = {ProvisioningStyle = Automatic; };};}; buildConfigurationList = A1000000000000000000000A; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; knownRegions = (en,Base,); mainGroup = A10000000000000000000003; productRefGroup = A10000000000000000000003; projectDirPath = ""; projectRoot = ""; targets = (A10000000000000000000008,); };
+        A1000000000000000000000A = {isa = XCConfigurationList; buildConfigurations = (A1000000000000000000000C,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Debug; };
+        A1000000000000000000000B = {isa = XCConfigurationList; buildConfigurations = (A1000000000000000000000E,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Debug; };
+        A1000000000000000000000C = {isa = XCBuildConfiguration; buildSettings = {}; name = Debug; };
+        A1000000000000000000000E = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; CODE_SIGN_ENTITLEMENTS = ProfileMint.entitlements; GENERATE_INFOPLIST_FILE = YES; IPHONEOS_DEPLOYMENT_TARGET = 13.0; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = iphoneos; SUPPORTED_PLATFORMS = iphoneos; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Debug; };
+    };
+    rootObject = A10000000000000000000009;
+}

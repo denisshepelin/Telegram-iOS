@@ -1,6 +1,7 @@
 import json
 import os
 import shutil
+import stat
 
 from BuildEnvironment import is_apple_silicon, call_executable, BuildEnvironment
 
@@ -8,6 +9,15 @@ from BuildEnvironment import is_apple_silicon, call_executable, BuildEnvironment
 def remove_directory(path):
     if os.path.isdir(path):
         shutil.rmtree(path)
+
+def make_user_writable(path):
+    if not os.path.exists(path):
+        return
+    for root, dirs, files in os.walk(path):
+        for item in dirs + files:
+            item_path = os.path.join(root, item)
+            os.chmod(item_path, os.stat(item_path).st_mode | stat.S_IWUSR)
+    os.chmod(path, os.stat(path).st_mode | stat.S_IWUSR)
 
 def generate_xcodeproj(build_environment: BuildEnvironment, disable_extensions, disable_provisioning_profiles, include_release, generate_dsym, bazel_app_arguments, target_name):
     if '/' in target_name:
@@ -54,6 +64,7 @@ def generate_xcodeproj(build_environment: BuildEnvironment, disable_extensions, 
     call_executable(bazel_generate_arguments)
 
     xcodeproj_path = '{}.xcodeproj'.format(app_target_spec.replace(':', '/'))
+    make_user_writable(xcodeproj_path)
     return xcodeproj_path
 
 

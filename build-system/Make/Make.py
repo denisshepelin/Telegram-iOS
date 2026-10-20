@@ -547,7 +547,8 @@ def generate_project(bazel, arguments):
     if arguments.target is not None:
         target_name = arguments.target
     
-    call_executable(['killall', 'Xcode'], check_result=False)
+    if not arguments.noOpenXcode:
+        call_executable(['killall', 'Xcode'], check_result=False)
 
     xcodeproj_path = generate(
         build_environment=bazel_command_line.build_environment,
@@ -559,7 +560,8 @@ def generate_project(bazel, arguments):
         target_name=target_name
     )
 
-    call_executable(['open', xcodeproj_path])
+    if not arguments.noOpenXcode:
+        call_executable(['open', xcodeproj_path])
 
 
 def resolve_watch_provisioning_profile(arguments, base_path):
@@ -966,6 +968,11 @@ if __name__ == '__main__':
     )
 
     generateProjectParser = subparsers.add_parser('generateProject', help='Generate Xcode project')
+    generateProjectParser.add_argument(
+        '--noOpenXcode',
+        action='store_true',
+        help='Generate the project without closing or opening Xcode.'
+    )
     generateProjectParser.add_argument(
         '--buildNumber',
         required=False,

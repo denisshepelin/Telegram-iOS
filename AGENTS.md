@@ -118,3 +118,44 @@ crop and raise `--tile-width` until the motion being judged is visible.
 Report findings with their evidence, by frame: "#23–#31 (t=0.512–0.645): the list stays at rest while the buttons
 overshoot 9 pt" names something another agent or the user can open and check. A claim about an animation without frame
 references has not been verified.
+
+## Local development guidance
+
+This file provides guidance to AI assistants when working with code in this repository.
+
+## Build
+The app is built using Bazel.
+
+## Bazel Lifecycle
+- Treat `build-system/Make/Make.py` as the entrypoint for local Bazel work. In this repo, run it through `uv`, not plain `python`.
+- For local simulator work, prefer regenerating the Xcode project with `generateProject` over editing generated files under `Telegram/Telegram.xcodeproj` or anything in `bazel-out`.
+- Keep a persistent local cache such as `--cacheDir="$HOME/telegram-bazel-cache"` for iteration speed.
+- If local Xcode does not match `versions.json`, use `--overrideXcodeVersion` deliberately rather than debugging unrelated Bazel failures first.
+- For simulator-only builds, use `--disableProvisioningProfiles`. Device signing requirements should not leak into the simulator lifecycle.
+- If Xcode reports `Telegram_xcodeproj: no such package`, or after pulling/rebasing changes that affect Bazel, regenerate the project before trying deeper cleanup.
+- After pulling new commits, especially when submodule pointers change, run `git submodule update --init --recursive` before assuming the Bazel graph is broken.
+- Avoid `clean` / `bazel clean --expunge` unless there is a concrete cache corruption or toolchain state problem. Prefer project regeneration and a rebuild first.
+- Do not treat artifacts under `/var/tmp/_bazel_*`, `build-input/`, `bazel-bin/`, or the generated `.xcodeproj` as durable hand-edited state. Fix the source Bazel rules or the project-generation code instead.
+
+## Device Build Notes
+- For local iPhone installs, generate the project with `--xcodeManagedCodesigning`; if local Xcode is newer than `versions.json`, pair it with `--overrideXcodeVersion`.
+- If the device does not appear in Xcode run destinations, make sure the `xcodeproj` top-level target includes both `device` and `simulator`, then regenerate the project and reopen Xcode.
+- `build-system/local-development.json` `team_id` must match the provisioning profile team or the Apple Development certificate subject OU. Do not rely only on the team shown in the certificate display label.
+- If Xcode says no provisioning profile exists for the bundle ID, create a tiny temporary iOS app with the same bundle identifier, enable automatic signing for the same team, and build it once to the target phone to force Xcode to mint the profile.
+- On this setup, Xcode-managed provisioning profiles were under `~/Library/Developer/Xcode/UserData/Provisioning Profiles`, not `~/Library/MobileDevice/Provisioning Profiles`.
+- If framework builds fail while copying `.swiftmodule`, `.swiftdoc`, `.swiftsourceinfo`, or writing framework `Info.plist` files with permission errors, suspect macOS `openrsync` leaving copied Bazel bundles read-only. Fix the source `copy_outputs.sh`, regenerate the project, reopen Xcode, and clean the build folder before debugging anything deeper.
+- After fixing a build issue, prefer the latest entry in Xcode's Report Navigator over the Issues pane, which can keep stale errors from earlier builds.
+
+## Code Style Guidelines
+- **Naming**: PascalCase for types, camelCase for variables/methods
+- **Imports**: Group and sort imports at the top of files
+- **Error Handling**: Properly handle errors with appropriate redaction of sensitive data
+- **Formatting**: Use standard Swift/Objective-C formatting and spacing
+- **Types**: Prefer strong typing and explicit type annotations where needed
+- **Documentation**: Document public APIs with comments
+
+## Project Structure
+- Core launch and application extensions code is in `Telegram/` directory
+- Most code is organized into libraries in `submodules/`
+- External code is located in `third-party/`
+- No tests are used at the moment

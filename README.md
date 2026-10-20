@@ -43,6 +43,29 @@ python3 build-system/Make/Make.py \
     --xcodeManagedCodesigning
 ```
 
+## Builds without ad rendering
+
+Add `--disable-ads` after the `build` or `generateProject` subcommand to hide
+Telegram-sponsored chat messages and banners, search results, and video overlays.
+Ad requests and receipt remain enabled. Hidden ads do not generate view or click
+reports, and account Premium status is unchanged. This does not filter promotional
+content posted as ordinary messages or shown by websites and mini apps.
+
+For example, generate a simulator project with:
+
+```sh
+uv run --no-project python build-system/Make/Make.py \
+    --cacheDir="$HOME/telegram-bazel-cache" \
+    generateProject \
+    --configurationPath=build-system/template_minimal_development_configuration.json \
+    --disableProvisioningProfiles \
+    --disable-ads
+```
+
+The generated project's builds retain this option. To restore normal ad rendering,
+regenerate the project without `--disable-ads`. Direct `build` invocations default
+to normal ad rendering when the option is omitted.
+
 # Advanced Compilation Guide
 
 ## Xcode

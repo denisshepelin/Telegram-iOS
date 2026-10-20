@@ -47,6 +47,7 @@ class BazelCommandLine:
         self.show_actions = False
         self.enable_sandbox = False
         self.disable_provisioning_profiles = False
+        self.disable_ads = False
         self.profile_swift = False
         self.embed_watch_app = False
         self.watch_api_id = None
@@ -229,6 +230,8 @@ class BazelCommandLine:
         args = [
             '--define=buildNumber={}'.format(self.build_number),
         ]
+        if self.disable_ads:
+            args += ['--@build_bazel_rules_swift//swift:copt=-DDISABLE_ADS']
         if self.embed_watch_app:
             args += ['--//Telegram:embedWatchApp']
             # watch_api_id/hash are guaranteed non-None here: set_watch_app is the only
@@ -454,6 +457,8 @@ def resolve_codesigning(arguments, base_path, build_configuration, provisioning_
 
 
 def resolve_configuration(base_path, bazel_command_line: BazelCommandLine, arguments, additional_codesigning_output_path):
+    if bazel_command_line is not None:
+        bazel_command_line.disable_ads = getattr(arguments, 'disable_ads', False)
     configuration_repository_path = '{}/build-input/configuration-repository'.format(base_path)
     os.makedirs(configuration_repository_path, exist_ok=True)
 
@@ -873,6 +878,12 @@ def add_codesigning_common_arguments(current_parser: argparse.ArgumentParser):
 
 def add_project_and_build_common_arguments(current_parser: argparse.ArgumentParser):
     add_codesigning_common_arguments(current_parser=current_parser)
+    current_parser.add_argument(
+        '--disable-ads',
+        action='store_true',
+        default=False,
+        help='Receive sponsored content without rendering chat, search, or video ads'
+    )
 
 
 if __name__ == '__main__':

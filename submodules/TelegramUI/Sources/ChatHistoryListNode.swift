@@ -1016,6 +1016,10 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
             adMessages = .single((nil, [], nil, nil))
         }
         
+        #if DISABLE_ADS
+        adMessages = adMessages |> map { _ in (nil, [], nil, nil) }
+        #endif
+
         let clientId = Atomic<Int32>(value: nextClientId)
         self.clientId = clientId
         nextClientId += 1

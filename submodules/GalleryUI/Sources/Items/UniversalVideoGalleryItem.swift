@@ -252,6 +252,13 @@ private final class UniversalVideoGalleryItemOverlayNode: GalleryOverlayContentN
         let adContext = context.engine.messages.adMessages(peerId: message.id.peerId, messageId: message.id)
         self.adContext = adContext
         self.adDisposable.set((adContext.state
+        |> map { state in
+            #if DISABLE_ADS
+            return (interPostInterval: Int32?.none, messages: [Message](), startDelay: Int32?.none, betweenDelay: Int32?.none)
+            #else
+            return state
+            #endif
+        }
         |> deliverOnMainQueue).start(next: { [weak self] state in
             guard let self else {
                 return

@@ -2709,7 +2709,11 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
                             |> mapToSignal { result in
                                 return context.engine.peers.searchAdPeers(query: query)
                                 |> map { adPeers in
+                                    #if DISABLE_ADS
+                                    return (result.0, result.1, [], false)
+                                    #else
                                     return (result.0, result.1, adPeers, false)
+                                    #endif
                                 }
                             }
                         )

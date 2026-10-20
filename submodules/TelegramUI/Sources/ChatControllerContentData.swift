@@ -695,7 +695,13 @@ extension ChatControllerImpl {
                 
                 let adMessage: Signal<Message?, NoError>
                 if let adMessagesContext {
-                    adMessage = adMessagesContext.state |> map { $0.messages.first }
+                    adMessage = adMessagesContext.state |> map { state in
+                        #if DISABLE_ADS
+                        return nil
+                        #else
+                        return state.messages.first
+                        #endif
+                    }
                 } else {
                     adMessage = .single(nil)
                 }

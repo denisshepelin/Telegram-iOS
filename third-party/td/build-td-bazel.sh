@@ -22,7 +22,7 @@ cd "$BUILD_DIR"
 # Generate source files
 mkdir native-build
 cd native-build
-cmake -DTD_GENERATE_SOURCE_FILES=ON ../td
+cmake -DTD_GENERATE_SOURCE_FILES=ON -DCMAKE_OSX_SYSROOT="$(xcrun --sdk macosx --show-sdk-path)" ../td
 cmake --build . -- -j$(sysctl -n hw.ncpu)
 cd ..
 

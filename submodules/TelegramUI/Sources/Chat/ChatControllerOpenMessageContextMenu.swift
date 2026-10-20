@@ -18,6 +18,7 @@ import TopMessageReactions
 import TelegramNotices
 import PresentationDataUtils
 import ChatPresentationInterfaceState
+import ChatControllerInteraction
 
 extension ChatControllerImpl {
     func openMessageContextMenu(message: EngineMessage, selectAll: Bool, node: ASDisplayNode, frame: CGRect, anyRecognizer: UIGestureRecognizer?, location: CGPoint?) -> Void {
@@ -70,6 +71,26 @@ extension ChatControllerImpl {
                         })
                     }))
                     actions.content = .list([revealItem] + items)
+                }
+                if let readerMessage = updatedMessages.first,
+                   (!readerMessage.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || readerMessage.attributes.contains(where: { $0 is RichTextMessageAttribute })),
+                   !readerMessage.isCopyProtected(), !self.presentationInterfaceState.copyProtectionEnabled,
+                   !readerMessage.media.contains(where: { $0 is TelegramMediaExpiredContent || $0 is TelegramMediaAction }),
+                   !readerMessage.attributes.contains(where: { ($0 as? RestrictedContentMessageAttribute)?.platformText(platform: "ios", contentSettings: self.context.currentContentSettings.with { $0 }) != nil }),
+                   (node as? ChatMessageItemView)?.item?.content.firstMessageAttributes.isLocallyMuted != true,
+                   case let .list(items) = actions.content {
+                    let readerItem = ContextMenuItem.action(ContextMenuActionItem(text: presentationData.strings.Conversation_OpenInReader, icon: { theme in
+                        return generateTintedImage(image: UIImage(bundleImageName: "Instant View/OpenDocument"), color: theme.contextMenu.primaryColor)
+                    }, action: { [weak self] controller, _ in
+                        controller?.dismiss(completion: { [weak self] in
+                            guard let self else { return }
+                            let reader = MessageReaderController(context: self.context, message: readerMessage, openUrl: { [weak self] url in
+                                self?.controllerInteraction?.openUrl(ChatControllerInteraction.OpenUrl(url: url.url, concealed: true, allowInlineWebpageResolution: url.webpageId != nil))
+                            })
+                            (self.navigationController as? NavigationController)?.pushViewController(reader)
+                        })
+                    }))
+                    actions.content = .list([readerItem] + items)
                 }
                 switch actions.content {
                 case let .list(itemList):

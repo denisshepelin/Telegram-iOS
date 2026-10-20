@@ -17249,3 +17249,6 @@ Error: %8$@";
 "PeerInfo.ShowMessages" = "Show messages";
 "Conversation.LocalMutedMessage" = "This message is from a muted account";
 "Conversation.RevealLocalMutedMessage" = "Reveal message";
+
+"Conversation.OpenInReader" = "Open in Reader";
+"Conversation.MessageReaderTitle" = "Reader";

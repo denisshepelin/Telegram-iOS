@@ -42,6 +42,9 @@ set -x
     pushd "$$BUILD_DIR/yasm-1.3.0"
     mkdir build
     cd build
+    if [ "$$(uname -s)" = "Darwin" ]; then
+        export SDKROOT="$$(xcrun --sdk macosx --show-sdk-path)"
+    fi
     "$$CMAKE_BIN" .. -DYASM_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DPYTHON_EXECUTABLE="$$(which python3)"
     make -j $$core_count
     popd

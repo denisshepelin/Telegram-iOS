@@ -15,7 +15,7 @@
         A1000000000000000000000A = {isa = XCConfigurationList; buildConfigurations = (A1000000000000000000000C,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Debug; };
         A1000000000000000000000B = {isa = XCConfigurationList; buildConfigurations = (A1000000000000000000000E,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Debug; };
         A1000000000000000000000C = {isa = XCBuildConfiguration; buildSettings = {}; name = Debug; };
-        A1000000000000000000000E = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; CODE_SIGN_ENTITLEMENTS = ProfileMint.entitlements; GENERATE_INFOPLIST_FILE = YES; IPHONEOS_DEPLOYMENT_TARGET = 13.0; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = iphoneos; SUPPORTED_PLATFORMS = iphoneos; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Debug; };
+        A1000000000000000000000E = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; CODE_SIGN_ENTITLEMENTS = ProfileMint.entitlements; GENERATE_INFOPLIST_FILE = YES; IPHONEOS_DEPLOYMENT_TARGET = 15.0; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = iphoneos; SUPPORTED_PLATFORMS = iphoneos; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Debug; };
     };
     rootObject = A10000000000000000000009;
 }

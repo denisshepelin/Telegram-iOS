@@ -2812,6 +2812,9 @@ public final class PeerExpiringStoryListContext {
 }
 
 public func _internal_pollPeerStories(postbox: Postbox, network: Network, accountPeerId: PeerId, peerId: PeerId, peerReference: PeerReference? = nil) -> Signal<Never, NoError> {
+    guard Stories.isEnabled else {
+        return .complete()
+    }
     return postbox.transaction { transaction -> Api.InputPeer? in
         return transaction.getPeer(peerId).flatMap(apiInputPeer) ?? peerReference?.inputPeer
     }

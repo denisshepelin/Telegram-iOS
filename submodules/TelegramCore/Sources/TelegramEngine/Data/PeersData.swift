@@ -1970,6 +1970,9 @@ public extension TelegramEngine.EngineData.Item {
             }
 
             func extract(view: PostboxView) -> Result {
+                guard Stories.isEnabled else {
+                    return nil
+                }
                 guard let view = view as? PeerStoryStatsView else {
                     preconditionFailure()
                 }

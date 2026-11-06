@@ -2207,7 +2207,7 @@ public final class ChatListNode: ListViewImpl {
         if case .chatList = mode, case .savedMessagesChats = location {
             localUnreadStateSignal = .single(LocalUnreadIndicatorState(settings: .defaultSettings))
         } else if case .chatList = mode {
-            localUnreadStateSignal = localUnreadIndicatorState(postbox: context.account.postbox)
+            localUnreadStateSignal = localUnreadIndicatorState(engine: context.engine)
         } else {
             localUnreadStateSignal = .single(LocalUnreadIndicatorState(settings: .defaultSettings))
         }
@@ -2216,7 +2216,7 @@ public final class ChatListNode: ListViewImpl {
             guard case .chatList = mode, location == .chatList(groupId: .root), chatListFilter == nil else {
                 return .single((state, 0))
             }
-            return localArchiveUnreadCount(postbox: context.account.postbox, state: state)
+            return localArchiveUnreadCount(engine: context.engine, state: state)
             |> map { count in
                 return (state, count)
             }

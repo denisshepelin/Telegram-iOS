@@ -5668,7 +5668,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 self.chatDisplayNode.historyNode.scrollToMessage(index: index)
             }
         }, navigateToStory: { [weak self] message, storyId in
-            guard let self else {
+            guard Stories.isEnabled, let self else {
                 return
             }
             if let story = message.associatedStories[storyId], story.data.isEmpty {
@@ -9670,6 +9670,9 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     }
     
     func openStories(peerId: EnginePeer.Id, avatarHeaderNode: ChatMessageAvatarHeaderNodeImpl?, avatarNode: AvatarNode?) {
+        guard Stories.isEnabled else {
+            return
+        }
         if let avatarNode = avatarHeaderNode?.avatarNode ?? avatarNode {
             StoryContainerScreen.openPeerStories(context: self.context, peerId: peerId, parentController: self, avatarNode: avatarNode)
         }

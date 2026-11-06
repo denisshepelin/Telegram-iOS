@@ -724,7 +724,7 @@ private func notificationPeerExceptionEntries(presentationData: PresentationData
         }
     }
      
-    if isStories == nil || isStories == true {
+    if Stories.isEnabled && (isStories == nil || isStories == true) {
         if case .user = peer {
             entries.append(.storyNotificationsHeader(index: index, theme: presentationData.theme, title: presentationData.strings.Notification_Exceptions_StoriesHeader))
             index += 1
@@ -1062,7 +1062,7 @@ public func notificationPeerExceptionController(
                     updatePeerNotificationInterval(peer.id, state.mode == .alwaysOn ? 0 : Int32.max)
                     updatePeerDisplayPreviews(peer.id, state.displayPreviews == .alwaysOn ? .show : .hide)
                 }
-                if isStories == nil || isStories == true {
+                if Stories.isEnabled && (isStories == nil || isStories == true) {
                     updatePeerStoriesMuted(peer.id, state.storiesMuted == .alwaysOn ? .unmuted : .muted)
                     updatePeerStoriesHideSender(peer.id, state.storiesHideSender == .alwaysOn ? .show : .hide)
                     updatePeerStorySound(peer.id, resolvedNotificationSound(sound: state.selectedStoriesSound, notificationSoundList: notificationSoundList))

@@ -2610,7 +2610,7 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
             let _ = context.engine.peers.requestRecommendedBots(peerId: peerId, forceUpdate: true).startStandalone()
         }
         
-        if peerId.namespace == Namespaces.Peer.CloudChannel || peerId.namespace == Namespaces.Peer.CloudUser {
+        if Stories.isEnabled && (peerId.namespace == Namespaces.Peer.CloudChannel || peerId.namespace == Namespaces.Peer.CloudUser) {
             self.storiesReady.set(false)
             let expiringStoryList = PeerExpiringStoryListContext(account: context.account, peerId: peerId)
             self.expiringStoryList = expiringStoryList
@@ -6116,7 +6116,7 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
             navigationFlags.isSettings = self.isSettings
             navigationFlags.isMyProfile = self.isMyProfile
             navigationFlags.canEdit = peerInfoCanEdit(peer: self.data?.peer, chatLocation: self.chatLocation, threadData: self.data?.threadData, cachedData: self.data?.cachedData, isContact: self.data?.isContact)
-            if let data = self.data, !data.isPremiumRequiredForStoryPosting || data.accountIsPremium, case let .channel(channel) = data.peer, channel.hasPermission(.postStories) {
+            if Stories.isEnabled, let data = self.data, !data.isPremiumRequiredForStoryPosting || data.accountIsPremium, case let .channel(channel) = data.peer, channel.hasPermission(.postStories) {
                 navigationFlags.channelCanPostStories = true
             }
             navigationFlags.paneKey = self.paneContainerNode.currentPaneKey

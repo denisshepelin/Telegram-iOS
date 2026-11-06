@@ -941,7 +941,7 @@ extension PeerInfoScreenNode {
                             self?.openBoost()
                         })))
                                                 
-                        if channel.hasPermission(.editStories) {
+                        if Stories.isEnabled && channel.hasPermission(.editStories) {
                             items.append(.action(ContextMenuActionItem(text: presentationData.strings.PeerInfo_Channel_ArchivedStories, icon: { theme in
                                 generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Archive"), color: theme.contextMenu.primaryColor)
                             }, action: { [weak self] _, f in
@@ -1292,7 +1292,7 @@ extension PeerInfoScreenNode {
                 
                 if case .user = peer, peer.id != strongSelf.context.account.peerId {
                     let context = strongSelf.context
-                    return localMessageMuteSettings(postbox: context.account.postbox)
+                    return localMessageMuteSettings(engine: context.engine)
                     |> take(1)
                     |> deliverOnMainQueue
                     |> map { settings in
@@ -1301,7 +1301,7 @@ extension PeerInfoScreenNode {
                             return generateTintedImage(image: UIImage(bundleImageName: isMuted ? "Peer Info/ShowIcon" : "Peer Info/HideIcon"), color: theme.contextMenu.primaryColor)
                         }, action: { _, f in
                             f(.dismissWithoutContent)
-                            let _ = updateLocalMessageMuteSettings(postbox: context.account.postbox, peerId: peer.id, muted: !isMuted).startStandalone()
+                            let _ = updateLocalMessageMuteSettings(engine: context.engine, peerId: peer.id, muted: !isMuted).startStandalone()
                         }))
                         return [muteItem] + items
                     }

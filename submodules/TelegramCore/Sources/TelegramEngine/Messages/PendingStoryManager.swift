@@ -439,6 +439,12 @@ final class PendingStoryManager {
         }
         
         private func update(localState: Stories.LocalState) {
+            let localState = Stories.LocalState(items: localState.items.filter { item in
+                if case .botPreview = item.target {
+                    return true
+                }
+                return Stories.isEnabled
+            })
             if let currentPendingItemContext = self.currentPendingItemContext, !localState.items.contains(where: { $0.randomId == currentPendingItemContext.item.randomId }) {
                 self.currentPendingItemContext = nil
                 self.queue.after(0.1, {

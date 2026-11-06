@@ -39,7 +39,6 @@ private final class ThemeSettingsControllerArguments {
     let openPowerSavingSettings: () -> Void
     let openStickersAndEmoji: () -> Void
     let toggleSendWithCmdEnter: (Bool) -> Void
-    let toggleDisplayStories: (Bool) -> Void
     let toggleShowNextMediaOnTap: (Bool) -> Void
     let selectAppIcon: (PresentationAppIcon) -> Void
     let editTheme: (PresentationCloudTheme) -> Void
@@ -61,7 +60,6 @@ private final class ThemeSettingsControllerArguments {
         openPowerSavingSettings: @escaping () -> Void,
         openStickersAndEmoji: @escaping () -> Void,
         toggleSendWithCmdEnter: @escaping (Bool) -> Void,
-        toggleDisplayStories: @escaping (Bool) -> Void,
         toggleShowNextMediaOnTap: @escaping (Bool) -> Void,
         selectAppIcon: @escaping (PresentationAppIcon) -> Void,
         editTheme: @escaping (PresentationCloudTheme) -> Void,
@@ -82,7 +80,6 @@ private final class ThemeSettingsControllerArguments {
         self.openPowerSavingSettings = openPowerSavingSettings
         self.openStickersAndEmoji = openStickersAndEmoji
         self.toggleSendWithCmdEnter = toggleSendWithCmdEnter
-        self.toggleDisplayStories = toggleDisplayStories
         self.toggleShowNextMediaOnTap = toggleShowNextMediaOnTap
         self.selectAppIcon = selectAppIcon
         self.editTheme = editTheme
@@ -110,7 +107,6 @@ public enum ThemeSettingsEntryTag: ItemListItemTag {
     case stickersAndEmoji
     case animations
     case sendWithCmdEnter
-    case stories
     case tapForNextMedia
     case nightMode
     case edit
@@ -141,7 +137,6 @@ private enum ThemeSettingsControllerEntry: ItemListNodeEntry {
     case stickersAndEmoji
     case otherHeader(PresentationTheme, String)
     case sendWithCmdEnter(PresentationTheme, String, Bool)
-    case stories(PresentationTheme, String, Bool)
     case showNextMediaOnTap(PresentationTheme, String, Bool)
     case showNextMediaOnTapInfo(PresentationTheme, String)
     
@@ -157,7 +152,7 @@ private enum ThemeSettingsControllerEntry: ItemListNodeEntry {
                 return ThemeSettingsControllerSection.icon.rawValue
             case .powerSaving, .stickersAndEmoji:
                 return ThemeSettingsControllerSection.message.rawValue
-            case .otherHeader, .sendWithCmdEnter, .stories, .showNextMediaOnTap, .showNextMediaOnTapInfo:
+            case .otherHeader, .sendWithCmdEnter, .showNextMediaOnTap, .showNextMediaOnTapInfo:
                 return ThemeSettingsControllerSection.other.rawValue
         }
     }
@@ -196,8 +191,6 @@ private enum ThemeSettingsControllerEntry: ItemListNodeEntry {
             return 14
         case .sendWithCmdEnter:
             return 15
-        case .stories:
-            return 16
         case .showNextMediaOnTap:
             return 17
         case .showNextMediaOnTapInfo:
@@ -303,12 +296,6 @@ private enum ThemeSettingsControllerEntry: ItemListNodeEntry {
                 } else {
                     return false
                 }
-            case let .stories(lhsTheme, lhsTitle, lhsValue):
-                if case let .stories(rhsTheme, rhsTitle, rhsValue) = rhs, lhsTheme === rhsTheme, lhsTitle == rhsTitle, lhsValue == rhsValue {
-                    return true
-                } else {
-                    return false
-                }
             case let .showNextMediaOnTap(lhsTheme, lhsTitle, lhsValue):
                 if case let .showNextMediaOnTap(rhsTheme, rhsTitle, rhsValue) = rhs, lhsTheme === rhsTheme, lhsTitle == rhsTitle, lhsValue == rhsValue {
                     return true
@@ -401,10 +388,6 @@ private enum ThemeSettingsControllerEntry: ItemListNodeEntry {
                 return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: title, value: value, sectionId: self.section, style: .blocks, updated: { value in
                     arguments.toggleSendWithCmdEnter(value)
                 }, tag: ThemeSettingsEntryTag.sendWithCmdEnter)
-            case let .stories(_, title, value):
-                return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: title, value: value, sectionId: self.section, style: .blocks, updated: { value in
-                    arguments.toggleDisplayStories(value)
-                }, tag: ThemeSettingsEntryTag.stories)
             case let .showNextMediaOnTap(_, title, value):
                 return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: title, value: value, sectionId: self.section, style: .blocks, updated: { value in
                     arguments.toggleShowNextMediaOnTap(value)
@@ -508,7 +491,6 @@ private func themeSettingsControllerEntries(
     if DeviceModel.current.isIpad {
         entries.append(.sendWithCmdEnter(presentationData.theme, strings.Appearance_SendWithCmdEnter, chatSettings.sendWithCmdEnter))
     }
-    entries.append(.stories(presentationData.theme, strings.Notifications_Stories, chatSettings.displayStories))
     entries.append(.showNextMediaOnTap(presentationData.theme, strings.Appearance_ShowNextMediaOnTap, mediaSettings.showNextMediaOnTap))
     entries.append(.showNextMediaOnTapInfo(presentationData.theme, strings.Appearance_ShowNextMediaOnTapInfo))
     
@@ -632,10 +614,6 @@ public func themeSettingsController(context: AccountContext, focusOnItemTag: The
     }, toggleSendWithCmdEnter: { value in
         let _ = updateChatSettingsInteractively(accountManager: context.sharedContext.accountManager, { current in
             return current.withUpdatedSendWithCmdEnter(value)
-        }).start()
-    }, toggleDisplayStories: { value in
-        let _ = updateChatSettingsInteractively(accountManager: context.sharedContext.accountManager, { current in
-            return current.withUpdatedDisplayStories(value)
         }).start()
     }, toggleShowNextMediaOnTap: { value in
         let _ = updateMediaDisplaySettingsInteractively(accountManager: context.sharedContext.accountManager, { current in

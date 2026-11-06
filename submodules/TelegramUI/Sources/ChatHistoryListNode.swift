@@ -1992,7 +1992,7 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
         
         let contentSettings = combineLatest(
             self.context.engine.data.subscribe(TelegramEngine.EngineData.Item.Configuration.ContentSettings()),
-            localMessageMuteSettings(postbox: self.context.account.postbox),
+            localMessageMuteSettings(engine: self.context.engine),
             self.locallyRevealedMessageIdsPromise.get()
         )
         

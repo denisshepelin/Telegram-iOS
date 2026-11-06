@@ -1691,6 +1691,9 @@ public final class WebAppController: ViewController, AttachmentContainable {
                     self.controller?._isPanGestureEnabled = isPanGestureEnabled
                 }
             case "web_app_share_to_story":
+                guard Stories.isEnabled else {
+                    break
+                }
                 if let json, let mediaUrl = json["media_url"] as? String, isAllowedBotMediaUrl(mediaUrl) {
                     let text = json["text"] as? String
                     let link = json["widget_link"] as? [String: Any]

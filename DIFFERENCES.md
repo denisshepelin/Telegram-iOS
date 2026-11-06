@@ -7,7 +7,7 @@ The upstream repository is `TelegramMessenger/Telegram-iOS`, tracked as
 | --- | --- |
 | App name | The installed app is named CalmGram. |
 | Links | System default browser is an explicit option. |
-| Stories | Stories and their chat-list affordances can be hidden. |
+| Stories | Stories are permanently disabled. |
 | Message muting | Messages from locally muted accounts can be temporarily revealed. |
 | Unread indicators | Private chats retain normal indicators. Groups and channels show no indicator by default, with an opt-in unread dot. Forum dots reflect only selected topics. |
 | Reader | Eligible message text can be opened in Reader mode. |

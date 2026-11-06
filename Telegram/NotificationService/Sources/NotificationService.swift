@@ -1033,6 +1033,12 @@ private final class NotificationServiceHandler {
 
                     Logger.shared.log("NotificationService \(episode)", "Decrypted payload: \(payloadJson)")
 
+                    if !Stories.isEnabled, payloadJson["story_id"] != nil {
+                        updateCurrentContent(NotificationContent(isLockedMessage: nil))
+                        completed()
+                        return
+                    }
+
                     var peerId: PeerId?
                     var messageId: MessageId.Id?
                     var storyId: Int32?

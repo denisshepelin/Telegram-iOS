@@ -4,9 +4,13 @@ import Display
 import AccountContext
 import StoryContainerScreen
 import SwiftSignalKit
+import TelegramCore
 
 extension PeerInfoScreenNode {
     func openStories(fromAvatar: Bool) {
+        guard Stories.isEnabled else {
+            return
+        }
         guard let controller = self.controller else {
             return
         }

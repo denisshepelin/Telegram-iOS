@@ -95,9 +95,6 @@ public func peerInfoNavigationButtonSets(_ flags: PeerInfoNavigationFlags) -> (n
     } else if flags.isMyProfile || flags.canEdit {
         normal.right.append(.edit)
     }
-    if flags.channelCanPostStories || flags.isMyProfile {
-        normal.right.insert(.postStory, at: 0)
-    }
     if flags.isSelectingOrReordering {
         expanded.right.append(.selectionDone)
     } else if let paneKey = flags.paneKey {

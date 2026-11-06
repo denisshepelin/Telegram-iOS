@@ -4456,11 +4456,11 @@ public final class SharedAccountContextImpl: SharedAccountContext {
     }
 
     public func makeGiftViewScreen(context: AccountContext, message: EngineMessage, shareStory: ((StarGift.UniqueGift) -> Void)?) -> ViewController {
-        return GiftViewScreen(context: context, subject: .message(message), shareStory: shareStory)
+        return GiftViewScreen(context: context, subject: .message(message), shareStory: Stories.isEnabled ? shareStory : nil)
     }
     
     public func makeGiftViewScreen(context: AccountContext, gift: StarGift.UniqueGift, shareStory: ((StarGift.UniqueGift) -> Void)?, openChatTheme: (() -> Void)?, dismissed: (() -> Void)?) -> ViewController {
-        let controller = GiftViewScreen(context: context, subject: .uniqueGift(gift, nil), shareStory: shareStory, openChatTheme: openChatTheme)
+        let controller = GiftViewScreen(context: context, subject: .uniqueGift(gift, nil), shareStory: Stories.isEnabled ? shareStory : nil, openChatTheme: openChatTheme)
         controller.disposed = {
             dismissed?()
         }

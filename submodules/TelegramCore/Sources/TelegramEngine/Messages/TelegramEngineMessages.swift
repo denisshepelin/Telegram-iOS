@@ -1076,7 +1076,20 @@ public extension TelegramEngine {
             }
         }
         
+        /// Observes unread state for exact peer and topic selections; absent topics remain unknown.
+        public func unreadPeerAndThreadStates(peerIds: Set<EnginePeer.Id>, threadIds: [EnginePeer.Id: Set<Int64>]) -> Signal<(Set<EnginePeer.Id>, [EnginePeer.Id: [Int64: Bool]]), NoError> {
+            return _internal_unreadPeerAndThreadStates(postbox: self.account.postbox, peerIds: peerIds, threadIds: threadIds)
+        }
+
+        /// Reads group unread chat totals and selected members from one database snapshot.
+        public func unreadChatListGroupState(group: EngineChatList.Group, tags: EnginePeerSummaryCounterTags, peerIds: Set<EnginePeer.Id>) -> Signal<(Int, [EnginePeer]), NoError> {
+            return _internal_unreadChatListGroupState(postbox: self.account.postbox, groupId: group._asGroup(), tags: tags, peerIds: peerIds)
+        }
+
         public func storySubscriptions(isHidden: Bool, tempKeepNewlyArchived: Bool = false) -> Signal<EngineStorySubscriptions, NoError> {
+            guard Stories.isEnabled else {
+                return .single(EngineStorySubscriptions(accountItem: nil, items: [], hasMoreToken: nil))
+            }
             return `deferred` { () -> Signal<EngineStorySubscriptions, NoError> in
                 let debugTimerSignal: Signal<Bool, NoError>
 #if DEBUG && false
@@ -1418,6 +1431,9 @@ public extension TelegramEngine {
         }
         
         public func preloadStorySubscriptions(isHidden: Bool, preferHighQuality: Signal<Bool, NoError>) -> Signal<[EngineMedia.Id: StoryPreloadInfo], NoError> {
+            guard Stories.isEnabled else {
+                return .single([:])
+            }
             let basicPeerKey = PostboxViewKey.basicPeer(self.account.peerId)
             let subscriptionsKey: PostboxStorySubscriptionsKey = isHidden ? .hidden : .filtered
             let storySubscriptionsKey = PostboxViewKey.storySubscriptions(key: subscriptionsKey)

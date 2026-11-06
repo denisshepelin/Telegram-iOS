@@ -1933,7 +1933,7 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
 
         super.init()
 
-        self.localUnreadIndicatorStateDisposable = (localUnreadIndicatorState(postbox: context.account.postbox)
+        self.localUnreadIndicatorStateDisposable = (localUnreadIndicatorState(engine: context.engine)
         |> deliverOnMainQueue).startStrict(next: { [weak self] state in
             self?.updateState { current in
                 var current = current

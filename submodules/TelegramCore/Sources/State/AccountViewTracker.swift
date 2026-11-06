@@ -1254,6 +1254,9 @@ public final class AccountViewTracker {
     }
     
     public func refreshStoriesForMessageIds(messageIds: Set<MessageId>) {
+        guard Stories.isEnabled else {
+            return
+        }
         self.queue.async { [self] in
             var addedMessageIds: [MessageId] = []
             let timestamp = Int32(CFAbsoluteTimeGetCurrent())
@@ -1398,6 +1401,9 @@ public final class AccountViewTracker {
     }
     
     public func refreshStoryStatsForPeerIds(peerIds: [PeerId]) {
+        guard Stories.isEnabled else {
+            return
+        }
         self.queue.async {
             self.pendingRefreshStoriesForPeerIds.append(contentsOf: peerIds)
             

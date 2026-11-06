@@ -101,7 +101,7 @@ extension ChatControllerImpl {
         var canShareToStory = false
         if case .peer = chatPresentationInterfaceState.chatLocation, let channel = message.peers[message.id.peerId] as? TelegramChannel {
             if case .broadcast = channel.info {
-                canShareToStory = true
+                canShareToStory = Stories.isEnabled
             }
             if channel.addressName == nil {
                 warnAboutPrivate = true

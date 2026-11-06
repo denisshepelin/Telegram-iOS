@@ -39,6 +39,9 @@ func openChatMessageImpl(_ params: OpenChatMessageParams) -> Bool {
     }
     
     if let story {
+        guard Stories.isEnabled else {
+            return false
+        }
         let navigationController = params.navigationController
         let context = params.context
         let storyContent = SingleStoryContentContextImpl(context: params.context, storyId: story.storyId, readGlobally: true)

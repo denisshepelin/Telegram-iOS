@@ -1,6 +1,14 @@
 import Postbox
+import SwiftSignalKit
 
 public enum EnginePeer {
+    public init(_ peer: TestPeer) {
+        switch peer.kind {
+        case .user: self = .user(peer.id)
+        case .group: self = .legacyGroup(peer.id)
+        case .forum: self = .channel(.init(id: peer.id, isForumOrMonoForum: true))
+        }
+    }
     public typealias Id = PeerId
 
     public struct Channel {
@@ -37,6 +45,7 @@ public enum EngineMessage {
 }
 
 public enum EngineChatList {
+    public enum Group { case archive }
     public final class ForumTopicData {
         public let id: Int64
         public let title: String
@@ -54,6 +63,64 @@ public enum EngineChatList {
             self.maxOutgoingReadMessageId = maxOutgoingReadMessageId
             self.isUnread = isUnread
             self.threadPeer = threadPeer
+        }
+    }
+}
+
+public typealias EnginePeerSummaryCounterTags = PeerSummaryCounterTags
+public typealias EnginePreferencesEntry = PreferencesEntry
+public struct ApplicationSpecificPreferencesKeys {
+    public static let localUnreadIndicatorSettings = ValueBoxKey(23)
+    public static let localMessageMuteSettings = ValueBoxKey(24)
+}
+
+public final class TelegramEngine {
+    public let data: EngineData
+    public let preferences: Preferences
+    public let messages: Messages
+
+    public init(postbox: Postbox) {
+        self.data = EngineData(postbox: postbox)
+        self.preferences = Preferences(postbox: postbox)
+        self.messages = Messages(postbox: postbox)
+    }
+
+    public final class EngineData {
+        public enum Item {
+            public enum Configuration {
+                public struct ApplicationSpecificPreference {
+                    let key: ValueBoxKey
+                    public init(key: ValueBoxKey) { self.key = key }
+                }
+            }
+        }
+        let postbox: Postbox
+        init(postbox: Postbox) { self.postbox = postbox }
+        public func subscribe(_ item: Item.Configuration.ApplicationSpecificPreference) -> Signal<PreferencesEntry?, NoError> {
+            return self.postbox.preferencesView(keys: [item.key]) |> map { $0.values[item.key] }
+        }
+    }
+
+    public final class Preferences {
+        let postbox: Postbox
+        init(postbox: Postbox) { self.postbox = postbox }
+        public func update(id: ValueBoxKey, _ transform: @escaping (PreferencesEntry?) -> PreferencesEntry?) -> Signal<Never, NoError> {
+            return Signal { _ in
+                self.postbox.transaction { transaction in
+                    transaction.updatePreferencesEntry(key: id, transform)
+                }.start(next: { _ in })
+            }
+        }
+    }
+
+    public final class Messages {
+        let postbox: Postbox
+        init(postbox: Postbox) { self.postbox = postbox }
+        public func unreadChatListGroupState(group: EngineChatList.Group, tags: PeerSummaryCounterTags, peerIds: Set<EnginePeer.Id>) -> Signal<(Int, [EnginePeer]), NoError> {
+            return _internal_unreadChatListGroupState(postbox: self.postbox, groupId: PeerGroupId(rawValue: 1), tags: tags, peerIds: peerIds)
+        }
+        public func unreadPeerAndThreadStates(peerIds: Set<EnginePeer.Id>, threadIds: [EnginePeer.Id: Set<Int64>]) -> Signal<(Set<EnginePeer.Id>, [EnginePeer.Id: [Int64: Bool]]), NoError> {
+            return _internal_unreadPeerAndThreadStates(postbox: self.postbox, peerIds: peerIds, threadIds: threadIds)
         }
     }
 }

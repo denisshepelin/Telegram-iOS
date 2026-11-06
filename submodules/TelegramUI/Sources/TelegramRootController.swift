@@ -326,7 +326,7 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
     
     @discardableResult
     public func openStoryCamera(mode: StoryCameraMode, customTarget: Stories.PendingTarget?, resumeLiveStream: Bool, transitionIn: StoryCameraTransitionIn?, transitionedIn: @escaping () -> Void, transitionOut: @escaping (Stories.PendingTarget?, Bool) -> StoryCameraTransitionOut?) -> StoryCameraTransitionInCoordinator? {
-        guard let controller = self.viewControllers.last as? ViewController else {
+        guard Stories.isEnabled, let controller = self.viewControllers.last as? ViewController else {
             return nil
         }
         controller.view.endEditing(true)

@@ -239,24 +239,9 @@ private func reactionNotificationSettingsEntries(
         messagesValue = true
     }
     
-    let storiesText: String?
-    let storiesValue: Bool
-    switch globalSettings.reactionSettings.stories {
-    case .nobody:
-        storiesText = nil
-        storiesValue = false
-    case .contacts:
-        storiesText = presentationData.strings.Notifications_Reactions_SubtitleContacts
-        storiesValue = true
-    case .everyone:
-        storiesText = presentationData.strings.Notifications_Reactions_SubtitleEveryone
-        storiesValue = true
-    }
-    
     entries.append(.messages(title: presentationData.strings.Notifications_Reactions_ItemMessages, text: messagesText, value: messagesValue))
-    entries.append(.stories(title: presentationData.strings.Notifications_Reactions_ItemStories, text: storiesText, value: storiesValue))
     
-    if messagesValue || storiesValue {
+    if messagesValue {
         entries.append(.optionsHeader(presentationData.strings.Notifications_Options.uppercased()))
         
         entries.append(.previews(presentationData.strings.Notifications_Stories_DisplayName, globalSettings.reactionSettings.hideSender != .hide))

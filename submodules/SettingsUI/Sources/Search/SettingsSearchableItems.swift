@@ -4048,16 +4048,6 @@ private func appearanceSearchableItems(context: AccountContext) -> [SettingsSear
             }
         ),
         SettingsSearchableItem(
-            id: "appearance/stories",
-            title: strings.Notifications_Stories,
-            icon: icon,
-            breadcrumbs: [strings.Settings_Appearance],
-            isVisible: false,
-            present: { context, _, present in
-                presentAppearanceSettings(context, present, .stories)
-            }
-        ),
-        SettingsSearchableItem(
             id: "appearance/tap-for-next-media",
             title: strings.Appearance_ShowNextMediaOnTap,
             icon: icon,
@@ -4485,7 +4475,13 @@ func settingsSearchableItems(
         )
         allItems.append(deleteAccount)
     
-        return allItems
+        return allItems.filter { item in
+            guard let id = item.id.base as? String else {
+                return true
+            }
+            let pathComponents = id.split(separator: "/")
+            return item.icon != .stories && !pathComponents.contains("stories") && !pathComponents.contains("all-stories")
+        }
     }
 }
 

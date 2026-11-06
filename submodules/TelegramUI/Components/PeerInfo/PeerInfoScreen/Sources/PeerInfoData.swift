@@ -2917,6 +2917,9 @@ func peerInfoIsChatMuted(peer: EnginePeer?, peerNotificationSettings: TelegramPe
 
 private var isPremiumRequired: Bool?
 private func isPremiumRequiredForStoryPosting(context: AccountContext) -> Signal<Bool, NoError> {
+    guard Stories.isEnabled else {
+        return .single(false)
+    }
     if let isPremiumRequired {
         return .single(isPremiumRequired)
     }

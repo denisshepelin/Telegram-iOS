@@ -68,6 +68,9 @@ public extension EngineStoryItem.ForwardInfo {
 }
 
 public enum Stories {
+    /// Whether story presentation, posting, and background subscriptions are available.
+    public static let isEnabled: Bool = false
+
     public final class Item: Codable, Equatable {
         public struct Views: Codable, Equatable {
             private enum CodingKeys: String, CodingKey {
@@ -1080,6 +1083,14 @@ func _internal_uploadStory(
     music: TelegramMediaFile?,
     uploadInfo: StoryUploadInfo? = nil
 ) -> Signal<Int32, NoError> {
+    if !Stories.isEnabled {
+        switch target {
+        case .botPreview:
+            break
+        case .myStories, .peer:
+            return .complete()
+        }
+    }
     let inputMedia = prepareUploadStoryContent(account: account, media: media)
     
     return (account.postbox.transaction { transaction in
@@ -1992,6 +2003,9 @@ public enum StoriesUploadAvailability {
 }
 
 func _internal_checkStoriesUploadAvailability(account: Account, target: Stories.PendingTarget) -> Signal<StoriesUploadAvailability, NoError> {
+    guard Stories.isEnabled else {
+        return .single(.unknownLimit)
+    }
     return account.postbox.transaction { transaction -> Api.InputPeer? in
         switch target {
         case .myStories:
@@ -2455,6 +2469,9 @@ extension Stories.StoredItem {
 }
 
 func _internal_getStoryById(accountPeerId: PeerId, postbox: Postbox, network: Network, peerId: EnginePeer.Id, id: Int32) -> Signal<EngineStoryItem?, NoError> {
+    guard Stories.isEnabled else {
+        return .single(nil)
+    }
     let storyId = StoryId(peerId: peerId, id: id)
     return postbox.transaction { transaction -> Peer? in
         return transaction.getPeer(peerId)
@@ -2531,6 +2548,9 @@ func _internal_getStoryById(accountPeerId: PeerId, postbox: Postbox, network: Ne
 }
 
 func _internal_getStoriesById(accountPeerId: PeerId, postbox: Postbox, network: Network, peer: PeerReference, ids: [Int32]) -> Signal<[Stories.StoredItem], NoError> {
+    guard Stories.isEnabled else {
+        return .single([])
+    }
     let inputPeer = peer.inputPeer
     
     return network.request(Api.functions.stories.getStoriesByID(peer: inputPeer, id: ids))
@@ -2557,6 +2577,9 @@ func _internal_getStoriesById(accountPeerId: PeerId, postbox: Postbox, network: 
 }
 
 func _internal_getStoriesById(accountPeerId: PeerId, postbox: Postbox, source: FetchMessageHistoryHoleSource, peerId: PeerId, peerReference: PeerReference?, ids: [Int32], allowFloodWait: Bool) -> Signal<[Stories.StoredItem]?, NoError> {
+    guard Stories.isEnabled else {
+        return .single([])
+    }
     return postbox.transaction { transaction -> Api.InputPeer? in
         return transaction.getPeer(peerId).flatMap(apiInputPeer)
     }
@@ -2712,6 +2735,9 @@ func _internal_exportStoryLink(account: Account, peerId: EnginePeer.Id, id: Int3
 }
 
 func _internal_refreshStories(account: Account, peerId: PeerId, ids: [Int32]) -> Signal<Never, NoError> {
+    guard Stories.isEnabled else {
+        return .complete()
+    }
     return _internal_getStoriesById(accountPeerId: account.peerId, postbox: account.postbox, source: .network(account.network), peerId: peerId, peerReference: nil, ids: ids, allowFloodWait: true)
     |> mapToSignal { result -> Signal<Never, NoError> in
         guard let result else {
@@ -2750,6 +2776,9 @@ func _internal_refreshStories(account: Account, peerId: PeerId, ids: [Int32]) ->
 }
 
 func _internal_refreshSeenStories(postbox: Postbox, network: Network) -> Signal<Never, NoError> {
+    guard Stories.isEnabled else {
+        return .complete()
+    }
     return network.request(Api.functions.stories.getAllReadPeerStories())
     |> map(Optional.init)
     |> `catch` { _ -> Signal<Api.Updates?, NoError> in

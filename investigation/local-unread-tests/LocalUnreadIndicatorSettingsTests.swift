@@ -102,11 +102,11 @@ require(roundTrip == roundTripInput, "64-bit peer and topic IDs survive Codable 
 
 let accountA = Postbox()
 let accountB = Postbox()
-updateLocalUnreadIndicatorSettingsInteractively(postbox: accountA) { _ in roundTrip }.start(next: { _ in })
+updateLocalUnreadIndicatorSettingsInteractively(engine: TelegramEngine(postbox: accountA)) { _ in roundTrip }.start(next: { _ in })
 var accountASettings: LocalUnreadIndicatorSettings?
-localUnreadIndicatorSettings(postbox: accountA).start(next: { accountASettings = $0 })
+localUnreadIndicatorSettings(engine: TelegramEngine(postbox: accountA)).start(next: { accountASettings = $0 })
 var accountBSettings: LocalUnreadIndicatorSettings?
-localUnreadIndicatorSettings(postbox: accountB).start(next: { accountBSettings = $0 })
+localUnreadIndicatorSettings(engine: TelegramEngine(postbox: accountB)).start(next: { accountBSettings = $0 })
 require(accountASettings == roundTrip, "settings persist in account A")
 require(accountBSettings == .defaultSettings, "settings do not leak across accounts")
 
@@ -125,8 +125,8 @@ let policySettings = LocalUnreadIndicatorSettings.defaultSettings
     .withUpdatedTopic(peerId: peer, threadId: selectedReadThread, enabled: true)
     .withUpdatedTopic(peerId: peer, threadId: unavailableThread, enabled: true)
     .withUpdatedPeer(peerId: otherPeer, enabled: true)
-updateLocalUnreadIndicatorSettingsInteractively(postbox: policyPostbox) { _ in policySettings }.start(next: { _ in })
-let state = readState(localUnreadIndicatorState(postbox: policyPostbox))
+updateLocalUnreadIndicatorSettingsInteractively(engine: TelegramEngine(postbox: policyPostbox)) { _ in policySettings }.start(next: { _ in })
+let state = readState(localUnreadIndicatorState(engine: TelegramEngine(postbox: policyPostbox)))
 require(state.unreadSelectedPeers == [peer], "only selected unread topics produce a parent peer dot")
 require(state.topicUnreadStates[peer] == [selectedUnreadThread: true, selectedReadThread: true], "selected topic booleans include marked-unread topics with zero unread messages")
 require(state.unreadEnabledPeers == [otherPeer], "enabled peer unread state is reported")
@@ -136,9 +136,30 @@ require(policyPostbox.observedKeys.contains(.messageHistoryThreadInfo(peerId: pe
 require(!policyPostbox.observedKeys.contains(.messageHistoryThreadInfo(peerId: peer, threadId: unselectedUnreadThread)), "unselected topic key is not observed")
 
 policyPostbox.setThreadInfo(peerId: peer, threadId: selectedUnreadThread, unreadCount: 0)
-let changedState = readState(localUnreadIndicatorState(postbox: policyPostbox))
+let changedState = readState(localUnreadIndicatorState(engine: TelegramEngine(postbox: policyPostbox)))
 require(changedState.unreadSelectedPeers == state.unreadSelectedPeers, "parent unread state can remain true while one selected topic changes")
 require(changedState.topicUnreadStates[peer] == [selectedUnreadThread: false, selectedReadThread: true], "exact selected topic state changes are retained in Equatable state")
+
+        let muteEngine = TelegramEngine(postbox: accountA)
+        updateLocalMessageMuteSettings(engine: muteEngine, peerId: peer, muted: true).start(next: { _ in })
+        localMessageMuteSettings(engine: muteEngine).start(next: { require($0.mutedPeerIds == [peer], "muted sender persists") })
+        localMessageMuteSettings(engine: TelegramEngine(postbox: accountB)).start(next: { require($0.mutedPeerIds.isEmpty, "muted senders stay account-local") })
+        updateLocalMessageMuteSettings(engine: muteEngine, peerId: peer, muted: false).start(next: { _ in })
+        localMessageMuteSettings(engine: muteEngine).start(next: { require($0.mutedPeerIds.isEmpty, "unmuting removes only the selected sender") })
+
+        let archivePostbox = Postbox()
+        archivePostbox.archiveTotals = TestUnreadTotals(counts: [.contact: 2, .nonContact: 3, .bot: 1, .group: 99])
+        archivePostbox.basicPeers[peer] = BasicPeerView(groupId: PeerGroupId(rawValue: 1), peer: TestPeer(id: peer, kind: .group))
+        archivePostbox.basicPeers[otherPeer] = BasicPeerView(groupId: PeerGroupId(rawValue: 0), peer: TestPeer(id: otherPeer, kind: .group))
+        let archiveSettings = defaults.withUpdatedPeer(peerId: peer, enabled: true).withUpdatedPeer(peerId: otherPeer, enabled: true)
+        let archiveState = LocalUnreadIndicatorState(settings: archiveSettings, unreadEnabledPeers: [peer, otherPeer])
+        localArchiveUnreadCount(engine: TelegramEngine(postbox: archivePostbox), state: archiveState).start(next: {
+            require($0 == 7, "archive includes maintained private totals plus only selected unread archived groups")
+        })
+        archivePostbox.basicPeers[peer] = BasicPeerView(groupId: PeerGroupId(rawValue: 0), peer: TestPeer(id: peer, kind: .group))
+        localArchiveUnreadCount(engine: TelegramEngine(postbox: archivePostbox), state: archiveState).start(next: {
+            require($0 == 6, "moving an opted-in group out of archive removes its contribution")
+        })
 
         runChatListPolicyTests(peer: peer, otherPeer: otherPeer)
         runSearchBadgePolicyTests(peer: peer)

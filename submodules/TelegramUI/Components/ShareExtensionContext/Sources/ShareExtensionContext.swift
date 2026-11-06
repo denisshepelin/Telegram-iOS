@@ -541,7 +541,7 @@ public class ShareRootControllerImpl {
                             self?.getExtensionContext()?.completeRequest(returningItems: nil, completionHandler: nil)
                         }
                         
-                        var canShareToStory = true
+                        var canShareToStory = Stories.isEnabled
                         var canSendInHighQuality = false
                         if let inputItems = self?.getExtensionContext()?.inputItems, inputItems.count == 1, let item = inputItems[0] as? NSExtensionItem, let attachments = item.attachments {
                             for attachment in attachments {

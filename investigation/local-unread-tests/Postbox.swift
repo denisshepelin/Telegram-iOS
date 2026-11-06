@@ -25,15 +25,14 @@ public struct ValueBoxKey: Hashable {
     }
 }
 
-public struct ApplicationSpecificPreferencesKeys {
-    public static let localUnreadIndicatorSettings = ValueBoxKey(23)
-}
 
 public enum UnreadMessageCountsItem: Hashable {
     case peer(id: PeerId, handleThreads: Bool)
+    case totalInGroup(PeerGroupId)
 }
 
 public enum PostboxViewKey: Hashable {
+    case basicPeer(PeerId)
     case messageHistoryThreadInfo(peerId: PeerId, threadId: Int64)
     case unreadCounts(items: [UnreadMessageCountsItem])
 }
@@ -90,9 +89,12 @@ public final class MessageHistoryThreadInfoView {
 }
 
 public final class UnreadMessageCountsView {
+    public enum Entry { case totalInGroup(PeerGroupId, TestUnreadTotals) }
+    public let entries: [Entry]
     private let values: [PeerId: (Int32, Bool)]
 
-    public init(values: [PeerId: (Int32, Bool)]) {
+    public init(values: [PeerId: (Int32, Bool)], entries: [Entry] = []) {
+        self.entries = entries
         self.values = values
     }
 
@@ -125,6 +127,8 @@ public final class Transaction {
 }
 
 public final class Postbox {
+    public var archiveTotals = TestUnreadTotals(counts: [:])
+    public var basicPeers: [PeerId: BasicPeerView] = [:]
     fileprivate var preferences: [ValueBoxKey: PreferencesEntry] = [:]
     private var threadInfos: [String: StoredMessageHistoryThreadInfo] = [:]
     private var unreadStates: [PeerId: (Int32, Bool)] = [:]
@@ -159,6 +163,8 @@ public final class Postbox {
         var views: [PostboxViewKey: Any] = [:]
         for key in keys {
             switch key {
+            case let .basicPeer(peerId):
+                views[key] = basicPeers[peerId] ?? BasicPeerView(groupId: nil, peer: nil)
             case let .messageHistoryThreadInfo(peerId, threadId):
                 views[key] = MessageHistoryThreadInfoView(info: self.threadInfos[self.threadKey(peerId: peerId, threadId: threadId)])
             case let .unreadCounts(items):
@@ -168,9 +174,46 @@ public final class Postbox {
                         values[peerId] = value
                     }
                 }
-                views[key] = UnreadMessageCountsView(values: values)
+                let entries = items.compactMap { item -> UnreadMessageCountsView.Entry? in
+                    if case let .totalInGroup(groupId) = item { return .totalInGroup(groupId, self.archiveTotals) }
+                    return nil
+                }
+                views[key] = UnreadMessageCountsView(values: values, entries: entries)
             }
         }
         return .single(CombinedView(views: views))
     }
+}
+
+public struct PeerGroupId: Hashable {
+    public let rawValue: Int32
+    public init(rawValue: Int32) { self.rawValue = rawValue }
+}
+public struct PeerSummaryCounterTags: OptionSet, Hashable {
+    public let rawValue: Int32
+    public init(rawValue: Int32) { self.rawValue = rawValue }
+    public static let contact = Self(rawValue: 1)
+    public static let nonContact = Self(rawValue: 2)
+    public static let bot = Self(rawValue: 4)
+    public static let group = Self(rawValue: 8)
+}
+public struct TestUnreadTotals {
+    public enum Category { case raw }
+    public enum Stats { case chats }
+    public let counts: [PeerSummaryCounterTags: Int32]
+    public init(counts: [PeerSummaryCounterTags: Int32]) { self.counts = counts }
+    public func count(for category: Category, in stats: Stats, with tags: PeerSummaryCounterTags) -> Int32 {
+        return self.counts.reduce(0) { $0 + (tags.contains($1.key) ? $1.value : 0) }
+    }
+}
+public struct TestPeer {
+    public enum Kind { case user, group, forum }
+    public let id: PeerId
+    public let kind: Kind
+    public init(id: PeerId, kind: Kind) { self.id = id; self.kind = kind }
+}
+public struct BasicPeerView {
+    public let groupId: PeerGroupId?
+    public let peer: TestPeer?
+    public init(groupId: PeerGroupId?, peer: TestPeer?) { self.groupId = groupId; self.peer = peer }
 }

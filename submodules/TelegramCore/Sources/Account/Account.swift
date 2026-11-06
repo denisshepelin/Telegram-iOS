@@ -1337,7 +1337,7 @@ public class Account {
         
         self.peerInputActivityManager = PeerInputActivityManager()
         
-        if !supplementary {
+        if Stories.isEnabled && !supplementary {
             self.filteredStorySubscriptionsContext = StorySubscriptionsContext(accountPeerId: peerId, postbox: postbox, network: network, isHidden: false)
             self.hiddenStorySubscriptionsContext = StorySubscriptionsContext(accountPeerId: peerId, postbox: postbox, network: network, isHidden: true)
         } else {
@@ -1508,8 +1508,12 @@ public class Account {
         self.managedOperationsDisposable.add(managedAutoexpireStoryOperations(network: self.network, postbox: self.postbox).start())
         self.managedOperationsDisposable.add(managedPeerTimestampAttributeOperations(network: self.network, postbox: self.postbox).start())
         self.managedOperationsDisposable.add(managedPendingWalletTransferMessages(postbox: self.postbox).start())
-        self.managedOperationsDisposable.add(managedSynchronizeViewStoriesOperations(postbox: self.postbox, network: self.network, stateManager: self.stateManager).start())
-        self.managedOperationsDisposable.add(managedSynchronizePeerStoriesOperations(postbox: self.postbox, network: self.network, stateManager: self.stateManager).start())
+        if Stories.isEnabled {
+            self.managedOperationsDisposable.add(managedSynchronizeViewStoriesOperations(postbox: self.postbox, network: self.network, stateManager: self.stateManager).start())
+        }
+        if Stories.isEnabled {
+            self.managedOperationsDisposable.add(managedSynchronizePeerStoriesOperations(postbox: self.postbox, network: self.network, stateManager: self.stateManager).start())
+        }
         self.managedOperationsDisposable.add(managedLocalTypingActivities(activities: self.localInputActivityManager.allActivities(), postbox: self.stateManager.postbox, network: self.stateManager.network, accountPeerId: self.stateManager.accountPeerId).start())
         
         let extractedExpr1: [Signal<AccountRunningImportantTasks, NoError>] = [

@@ -776,7 +776,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         |> distinctUntilChanged
         |> map { appConfiguration -> StoriesConfiguration.PostingAvailability in
             let storiesConfiguration = StoriesConfiguration.with(appConfiguration: appConfiguration)
-            return storiesConfiguration.posting
+            return Stories.isEnabled ? storiesConfiguration.posting : .disabled
         }
         |> deliverOnMainQueue
         ).startStrict(next: { [weak self] postingAvailability in
@@ -2978,6 +2978,9 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     
     private weak var storyCameraTooltip: TooltipScreen?
     fileprivate func openStoryCamera(fromList: Bool, gesturePullOffset: CGFloat? = nil, sourceView: UIView? = nil) {
+        guard Stories.isEnabled else {
+            return
+        }
         guard !self.context.isFrozen else {
             let controller = self.context.sharedContext.makeAccountFreezeInfoScreen(context: self.context)
             self.push(controller)
@@ -4321,6 +4324,9 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     }
     
     public func openStoriesFromNotification(peerId: EnginePeer.Id, storyId: Int32) {
+        guard Stories.isEnabled else {
+            return
+        }
         let presentationData = self.presentationData
         let progressSignal = Signal<Never, NoError> { [weak self] subscriber in
             let controller = OverlayStatusController(theme: presentationData.theme, type: .loading(cancelled: nil))
@@ -4384,6 +4390,9 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     }
     
     public func openStories(peerId: EnginePeer.Id, completion: @escaping (StoryContainerScreen) -> Void = { _ in }) {
+        guard Stories.isEnabled else {
+            return
+        }
         if let navigationBarView = self.chatListDisplayNode.navigationBarView.view as? ChatListNavigationBar.View {
             if navigationBarView.storiesUnlocked {
                 self.shouldFixStorySubscriptionOrder = true
@@ -7328,7 +7337,7 @@ private final class ChatListLocationContext {
                     }
                 }
                 
-                if storyPostingAvailable {
+                if Stories.isEnabled && storyPostingAvailable {
                     self.storyButton = NavigationBarComponent.Button(id: "story",
                         content: .icon(imageName: "Chat List/AddStoryIcon"),
                         action: { [weak self] sourceView in

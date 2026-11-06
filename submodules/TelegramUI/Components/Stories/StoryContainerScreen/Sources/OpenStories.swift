@@ -88,6 +88,9 @@ public extension StoryContainerScreen {
     }
     
     static func openPeerStories(context: AccountContext, peerId: EnginePeer.Id, parentController: ViewController, avatarNode: AvatarNode?, sharedProgressDisposable: MetaDisposable? = nil) {
+        guard Stories.isEnabled else {
+            return
+        }
         return openPeerStoriesCustom(
             context: context,
             peerId: peerId,
@@ -173,6 +176,9 @@ public extension StoryContainerScreen {
         setProgress: @escaping (Signal<Never, NoError>) -> Void,
         completion: @escaping (StoryContainerScreen) -> Void = { _ in }
     ) {
+        guard Stories.isEnabled else {
+            return
+        }
         let storyContent = StoryContentContextImpl(context: context, isHidden: isHidden, focusedPeerId: peerId, focusedStoryId: focusOnId, singlePeer: singlePeer, fixedOrder: initialOrder)
         let signal = storyContent.state
         |> take(1)

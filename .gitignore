@@ -88,3 +88,5 @@ submodules/TelegramApi/Tests/SwiftPMGenerated/
 # Private local configuration and device diagnostics.
 /build-system/local-development.json
 /investigation/archive-unread-investigation.md
+/Telegram.app/
+build/accessibility/

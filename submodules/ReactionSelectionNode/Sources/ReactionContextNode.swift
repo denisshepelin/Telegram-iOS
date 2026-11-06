@@ -2771,7 +2771,9 @@ public final class ReactionContextNode: ASDisplayNode, ASScrollViewDelegate {
             selfTargetBounds = selfTargetBounds.insetBy(dx: -selfTargetBounds.width * 0.13, dy: -selfTargetBounds.height * 0.13).offsetBy(dx: -0.5, dy: -0.5)
         }
         
-        let selfTargetRect = self.view.convert(selfTargetBounds, from: targetView)
+        // The picker can live in the keyboard window, whose UIScreen differs from the chat's.
+        // Convert within each window to avoid UIKit returning CGRect.null across those screens.
+        let selfTargetRect = self.view.convert(targetView.convert(selfTargetBounds, to: nil), from: nil)
         
         var expandedSize: CGSize = selfTargetRect.size
         if self.didTriggerExpandedReaction {
@@ -3494,7 +3496,7 @@ public final class StandaloneReactionAnimation: ASDisplayNode {
             selfTargetBounds = iconFrame
         }
         
-        let selfTargetRect = self.view.convert(selfTargetBounds, from: targetView)
+        let selfTargetRect = self.view.convert(targetView.convert(selfTargetBounds, to: nil), from: nil)
         
         var expandedSize: CGSize = selfTargetRect.size
         if isLarge {
@@ -3960,7 +3962,7 @@ public final class StandaloneReactionAnimation: ASDisplayNode {
         var selfTargetBounds = targetView.bounds
         selfTargetBounds = selfTargetBounds.insetBy(dx: -selfTargetBounds.width * 0.5, dy: -selfTargetBounds.height * 0.5)
         
-        let selfTargetRect = self.view.convert(selfTargetBounds, from: targetView)
+        let selfTargetRect = self.view.convert(targetView.convert(selfTargetBounds, to: nil), from: nil)
         
         var expandedSize: CGSize = selfTargetRect.size
         if didTriggerExpandedReaction {

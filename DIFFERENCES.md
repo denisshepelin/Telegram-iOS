@@ -3,16 +3,15 @@
 The upstream repository is `TelegramMessenger/Telegram-iOS`, tracked as
 `origin/master`. Local changes are committed on `master`.
 
-| Area | Local behavior |
-| --- | --- |
-| App name | The installed app is named CalmGram. |
-| Links | System default browser is an explicit option. |
-| Stories | Stories are permanently disabled. |
-| Message muting | Messages from locally muted accounts can be temporarily revealed. |
+| Area              | Local behavior                                                                                                                                                |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| App name          | The installed app is named CalmGram.                                                                                                                          |
+| Links             | System default browser is an explicit option.                                                                                                                 |
+| Stories           | Stories are permanently disabled.                                                                                                                             |
+| Message muting    | Messages from locally muted accounts can be temporarily revealed.                                                                                             |
 | Unread indicators | Private chats retain normal indicators. Groups and channels show no indicator by default, with an opt-in unread dot. Forum dots reflect only selected topics. |
-| Reader | Eligible message text can be opened in Reader mode. |
-| Sponsored content | Builds with `--disable-ads` hide ad rendering while retaining ad requests. |
-| Local development | Device and simulator project generation, writable build products, and command-line iPhone signing and installation. |
+| Reader            | Eligible message text can be opened in Reader mode.                                                                                                           |
+| Local development | Device and simulator project generation, writable build products, and command-line iPhone signing and installation.                                           |
 
 ## Compare local work with upstream
 
